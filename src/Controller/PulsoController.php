@@ -1318,480 +1318,716 @@ HTML;
 
     private function renderPageFinancas(string $title, string $content, int $stationId): string
     {
+        $_rnb_sid = $stationId; $_rnb_atual = 'financas';
+        ob_start();
+        @require dirname(__DIR__, 2) . '/public/rnb-nav.php';
+        $rnbNav = ob_get_clean();
+
         $currentUrl = $_SERVER['REQUEST_URI'] ?? '';
+        $mesPt = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][(int)date('m')-1];
+        $periodoLabel = $mesPt . ' ' . date('Y');
 
         $sections = [
             'VISÃO GERAL' => [
-                ['icon'=>'speedometer2',      'label'=>'Dashboard',        'url'=>"/public/financas/{$stationId}",                'color'=>'#10b981'],
+                ['icon'=>'speedometer2','label'=>'Dashboard','url'=>"/public/financas/{$stationId}",'color'=>'#10b981','rgb'=>'16,185,129'],
             ],
             'CONTABILIDADE' => [
-                ['icon'=>'diagram-3',          'label'=>'Plano de Contas',  'url'=>"/public/financas/{$stationId}/plano-contas",    'color'=>'#00e5ff'],
-                ['icon'=>'grid-3x3-gap',       'label'=>'Centro de Custo',  'url'=>"/public/financas/{$stationId}/centros-custo",   'color'=>'#8b5cf6'],
-                ['icon'=>'journal-text',       'label'=>'Lançamentos',      'url'=>"/public/financas/{$stationId}/lancamentos",     'color'=>'#3b82f6'],
+                ['icon'=>'diagram-3','label'=>'Plano de Contas','url'=>"/public/financas/{$stationId}/plano-contas",'color'=>'#00e5ff','rgb'=>'0,229,255'],
+                ['icon'=>'grid-3x3-gap','label'=>'Centros de Custo','url'=>"/public/financas/{$stationId}/centros-custo",'color'=>'#8b5cf6','rgb'=>'139,92,246'],
+                ['icon'=>'journal-text','label'=>'Lançamentos','url'=>"/public/financas/{$stationId}/lancamentos",'color'=>'#3b82f6','rgb'=>'59,130,246'],
             ],
             'MOVIMENTOS' => [
-                ['icon'=>'arrow-down-circle',  'label'=>'Contas a Pagar',   'url'=>"/public/financas/{$stationId}/contas-pagar",    'color'=>'#ef4444', 'badge'=>''],
-                ['icon'=>'arrow-up-circle',    'label'=>'Contas a Receber', 'url'=>"/public/financas/{$stationId}/contas-receber",  'color'=>'#10b981', 'badge'=>''],
-                ['icon'=>'bank',               'label'=>'Conta Corrente',   'url'=>"/public/financas/{$stationId}/conta-corrente",  'color'=>'#00e5ff'],
+                ['icon'=>'arrow-down-circle','label'=>'Contas a Pagar','url'=>"/public/financas/{$stationId}/contas-pagar",'color'=>'#ef4444','rgb'=>'239,68,68'],
+                ['icon'=>'arrow-up-circle','label'=>'Contas a Receber','url'=>"/public/financas/{$stationId}/contas-receber",'color'=>'#10b981','rgb'=>'16,185,129'],
+                ['icon'=>'bank','label'=>'Conta Corrente','url'=>"/public/financas/{$stationId}/conta-corrente",'color'=>'#00e5ff','rgb'=>'0,229,255'],
             ],
             'COMERCIAL' => [
-                ['icon'=>'building',           'label'=>'Patrocinadores',   'url'=>"/public/financas/{$stationId}/patrocinadores",  'color'=>'#f59e0b'],
-                ['icon'=>'file-earmark-text',  'label'=>'Contratos',        'url'=>"/public/financas/{$stationId}/contratos",       'color'=>'#3b82f6'],
-                ['icon'=>'person-check',       'label'=>'Comissões',        'url'=>"/public/financas/{$stationId}/comissoes",       'color'=>'#8b5cf6'],
+                ['icon'=>'building','label'=>'Patrocinadores','url'=>"/public/financas/{$stationId}/patrocinadores",'color'=>'#f59e0b','rgb'=>'245,158,11'],
+                ['icon'=>'file-earmark-text','label'=>'Contratos','url'=>"/public/financas/{$stationId}/contratos",'color'=>'#3b82f6','rgb'=>'59,130,246'],
+                ['icon'=>'person-check','label'=>'Comissões','url'=>"/public/financas/{$stationId}/comissoes",'color'=>'#8b5cf6','rgb'=>'139,92,246'],
             ],
             'RELATÓRIOS' => [
-                ['icon'=>'graph-up-arrow',     'label'=>'Fluxo de Caixa',   'url'=>"/public/financas/{$stationId}/fluxo-caixa",    'color'=>'#10b981'],
-                ['icon'=>'bar-chart-line',     'label'=>'DRE',              'url'=>"/public/financas/{$stationId}/dre",             'color'=>'#00e5ff'],
-                ['icon'=>'file-earmark-bar-graph','label'=>'Relatórios',    'url'=>"/public/financas/{$stationId}/relatorios-fp",   'color'=>'#8892a4'],
+                ['icon'=>'graph-up-arrow','label'=>'Fluxo de Caixa','url'=>"/public/financas/{$stationId}/fluxo-caixa",'color'=>'#10b981','rgb'=>'16,185,129'],
+                ['icon'=>'bar-chart-line','label'=>'DRE','url'=>"/public/financas/{$stationId}/dre",'color'=>'#00e5ff','rgb'=>'0,229,255'],
+                ['icon'=>'file-earmark-bar-graph','label'=>'Relatórios','url'=>"/public/financas/{$stationId}/relatorios-fp",'color'=>'#8892a4','rgb'=>'136,146,164'],
             ],
         ];
 
         $navHtml = '';
-        foreach ($sections as $sectionLabel => $items) {
+        foreach ($sections as $sLabel => $items) {
             $navHtml .= '<div class="fpn-section">';
-            $navHtml .= '<div class="fpn-section-label">' . htmlspecialchars($sectionLabel) . '</div>';
+            $navHtml .= '<div class="fpn-section-label">' . htmlspecialchars($sLabel) . '</div>';
             foreach ($items as $item) {
-                $isActive = str_starts_with($currentUrl, $item['url']);
-                $activeClass = $isActive ? ' fpn-item-active' : '';
-                $activeStyle = $isActive ? "style='--item-color:{$item['color']}'" : '';
-                $badge = !empty($item['badge']) ? '<span class="fpn-badge">' . $item['badge'] . '</span>' : '';
+                $isExact = ($item['url'] === "/public/financas/{$stationId}");
+                $active  = $isExact
+                    ? ($currentUrl === $item['url'] || $currentUrl === $item['url'] . '/')
+                    : str_starts_with($currentUrl, $item['url']);
+                $ac  = $active ? ' fpn-active' : '';
+                $dot = $active ? '<span class="fpn-dot"></span>' : '';
                 $navHtml .= "
-                <a href='{$item['url']}' class='fpn-item{$activeClass}' {$activeStyle} data-color='{$item['color']}'>
-                    <span class='fpn-item-icon' style='--item-color:{$item['color']}'>
-                        <i class='bi bi-{$item['icon']}'></i>
-                    </span>
-                    <span class='fpn-item-label'>{$item['label']}</span>
-                    {$badge}
-                    " . ($isActive ? "<span class='fpn-item-dot'></span>" : "") . "
+                <a href='{$item['url']}' class='fpn-item{$ac}' style='--ic:{$item['color']};--ir:{$item['rgb']}'>
+                    <span class='fpn-icon'><i class='bi bi-{$item['icon']}'></i></span>
+                    <span class='fpn-label'>{$item['label']}</span>
+                    {$dot}
                 </a>";
             }
             $navHtml .= '</div>';
         }
+
+        $alertas = $this->service->getFpAlertas($stationId);
+        $alertasJson = json_encode($alertas);
 
         return <<<HTML
 <!DOCTYPE html>
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{$title} · Finance Pro</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&display=swap" rel="stylesheet">
 <style>
+/* ═══════════════════════════════════════════════════════════════
+   FINANCE PRO — DESIGN SYSTEM
+   Rádio New Band Angola
+═══════════════════════════════════════════════════════════════ */
 *{box-sizing:border-box;margin:0;padding:0}
+
 :root{
+    /* Cores base */
+    --g: #10b981;  /* green  */
+    --r: #ef4444;  /* red    */
+    --o: #f59e0b;  /* orange */
+    --c: #00e5ff;  /* cyan   */
+    --p: #8b5cf6;  /* purple */
+    --b: #3b82f6;  /* blue   */
+
+    /* Backgrounds — escala de profundidade */
+    --bg0: #060810;
+    --bg1: #0a0d16;
+    --bg2: #0f1320;
+    --bg3: #151a2a;
+    --bg4: #1c2234;
+    --bg5: #222a3e;
+
+    /* Texto */
+    --t1: #eef1fb;
+    --t2: #8691a8;
+    --t3: #3e4a60;
+
+    /* Bordas */
+    --bd: rgba(255,255,255,.06);
+    --bd2: rgba(255,255,255,.1);
+
+    /* Layout */
+    --sb-w: 256px;
+    --top-h: 56px;
+
+    /* Aliases para templates legados */
     --fp-green:#10b981;--fp-red:#ef4444;--fp-gold:#f59e0b;
     --fp-cyan:#00e5ff;--fp-purple:#8b5cf6;--fp-blue:#3b82f6;
-    --fp-bg:#070b14;--fp-bg1:#0c1018;--fp-bg2:#131923;
-    --fp-bg3:#1a2233;--fp-bg4:#202b3d;
-    --fp-text:#f0f4ff;--fp-text2:#8892a4;--fp-text3:#4a5568;
+    --fp-bg:#060810;--fp-bg1:#0a0d16;--fp-bg2:#0f1320;
+    --fp-bg3:#151a2a;--fp-bg4:#1c2234;
+    --fp-text:#eef1fb;--fp-text2:#8691a8;--fp-text3:#3e4a60;
     --fp-border:rgba(255,255,255,.06);
-    --sidebar-w:272px;
 }
-body{background:var(--fp-bg);color:var(--fp-text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;overflow:hidden}
 
-/* ===== SIDEBAR ===== */
-.fpn-sidebar{
-    width:var(--sidebar-w);min-width:var(--sidebar-w);height:100vh;
-    background:var(--fp-bg1);
-    border-right:1px solid var(--fp-border);
-    display:flex;flex-direction:column;
-    position:sticky;top:0;overflow:hidden;
+html,body{height:100%;overflow:hidden}
+body{
+    background:var(--bg0);
+    color:var(--t1);
+    font-family:'Inter',system-ui,sans-serif;
+    font-size:13px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+}
+
+/* ── Shell ──────────────────────────────────────────────────── */
+.fp-shell{display:flex;height:100vh;overflow:hidden}
+
+/* ── Sidebar ────────────────────────────────────────────────── */
+.fp-sb{
+    width:var(--sb-w);
+    min-width:var(--sb-w);
+    background:var(--bg1);
+    border-right:1px solid var(--bd);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
 }
 
 /* Brand */
-.fpn-brand{
-    padding:20px 20px 16px;
-    border-bottom:1px solid var(--fp-border);
-    display:flex;align-items:center;gap:12px;
+.fp-brand{
+    padding:16px;
+    border-bottom:1px solid var(--bd);
+    display:flex;
+    align-items:center;
+    gap:10px;
     flex-shrink:0;
 }
-.fpn-brand-logo{
-    width:40px;height:40px;border-radius:12px;
-    background:linear-gradient(135deg,#10b981,#059669);
-    display:flex;align-items:center;justify-content:center;
-    font-size:18px;font-weight:900;color:#000;flex-shrink:0;
-    box-shadow:0 4px 12px rgba(16,185,129,.3);
-}
-.fpn-brand-name{font-size:15px;font-weight:800;color:var(--fp-text);line-height:1.2}
-.fpn-brand-sub{font-size:10px;color:var(--fp-text3);margin-top:2px;font-weight:500}
-
-/* Period selector */
-.fpn-period{
-    margin:12px 16px;
-    padding:8px 12px;
-    background:var(--fp-bg3);
-    border:1px solid var(--fp-border);
+.fp-logo{
+    width:36px;height:36px;
     border-radius:10px;
-    display:flex;align-items:center;justify-content:space-between;
-    cursor:pointer;transition:border-color .15s;
+    background:linear-gradient(145deg,#0fda8e,#059669);
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:900;
+    color:#011a0d;
+    letter-spacing:-.5px;
+    flex-shrink:0;
+    box-shadow:0 2px 8px rgba(16,185,129,.3);
+}
+.fp-brand-name{font-size:13.5px;font-weight:800;color:var(--t1);letter-spacing:-.2px}
+.fp-brand-sub{font-size:9.5px;color:var(--t3);margin-top:1px;font-weight:500}
+
+/* Período */
+.fp-period{
+    margin:10px 12px 4px;
+    padding:7px 10px;
+    background:var(--bg3);
+    border:1px solid var(--bd);
+    border-radius:8px;
+    display:flex;align-items:center;gap:7px;
     flex-shrink:0;
 }
-.fpn-period:hover{border-color:rgba(255,255,255,.12)}
-.fpn-period-txt{font-size:11px;font-weight:600;color:var(--fp-text2);display:flex;align-items:center;gap:6px}
-.fpn-period-arrow{font-size:10px;color:var(--fp-text3)}
+.fp-period i{font-size:11px;color:var(--t3)}
+.fp-period-txt{font-size:11px;font-weight:600;color:var(--t2);flex:1}
+.fp-period-tag{font-size:9px;font-weight:700;color:var(--g);background:rgba(16,185,129,.1);padding:2px 6px;border-radius:12px;border:1px solid rgba(16,185,129,.18)}
 
 /* Nav */
-.fpn-nav{flex:1;overflow-y:auto;padding:4px 0 8px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent}
-.fpn-nav::-webkit-scrollbar{width:3px}
-.fpn-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
+.fp-nav{flex:1;overflow-y:auto;padding:4px 0 8px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.05) transparent}
+.fp-nav::-webkit-scrollbar{width:3px}
+.fp-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:2px}
 
-.fpn-section{padding:8px 0 4px}
+.fpn-section{padding:8px 0 2px}
 .fpn-section-label{
-    font-size:9px;font-weight:700;color:var(--fp-text3);
-    text-transform:uppercase;letter-spacing:1.2px;
-    padding:0 20px 6px;
+    font-size:9px;font-weight:700;color:var(--t3);
+    text-transform:uppercase;letter-spacing:1.3px;
+    padding:0 16px 5px;
 }
-
 .fpn-item{
-    display:flex;align-items:center;gap:10px;
-    padding:7px 12px 7px 16px;
-    margin:1px 8px;
-    border-radius:10px;
+    display:flex;align-items:center;gap:8px;
+    padding:6px 10px 6px 12px;
+    margin:0 5px 1px;
+    border-radius:8px;
     text-decoration:none;
-    color:var(--fp-text2);
+    color:var(--t2);
     font-size:12.5px;font-weight:500;
-    transition:all .15s;
+    transition:background .1s,color .1s;
     position:relative;
 }
-.fpn-item:hover{
-    background:rgba(255,255,255,.04);
-    color:var(--fp-text);
-    text-decoration:none;
+.fpn-item:hover{background:rgba(255,255,255,.04);color:var(--t1);text-decoration:none}
+.fpn-item.fpn-active{
+    background:rgba(var(--ir),.1);
+    color:var(--t1);
+    font-weight:650;
 }
-.fpn-item-active{
-    background:rgba(var(--item-color-rgb, 16,185,129),.08) !important;
-    color:var(--fp-text) !important;
-    font-weight:700;
+.fpn-item.fpn-active::before{
+    content:'';
+    position:absolute;left:0;top:4px;bottom:4px;
+    width:2px;border-radius:0 2px 2px 0;
+    background:var(--ic,#10b981);
 }
-.fpn-item-active::before{
-    content:'';position:absolute;left:-1px;top:4px;bottom:4px;
-    width:3px;border-radius:0 2px 2px 0;
-    background:var(--item-color,#10b981);
-}
-
-.fpn-item-icon{
-    width:28px;height:28px;border-radius:8px;
+.fpn-icon{
+    width:24px;height:24px;border-radius:6px;
     display:flex;align-items:center;justify-content:center;
-    font-size:13px;flex-shrink:0;
-    background:rgba(255,255,255,.04);
-    color:var(--fp-text3);
-    transition:all .15s;
+    font-size:12px;flex-shrink:0;
+    background:rgba(255,255,255,.03);
+    color:var(--t3);
+    transition:all .1s;
 }
-.fpn-item:hover .fpn-item-icon,
-.fpn-item-active .fpn-item-icon{
-    background:color-mix(in srgb, var(--item-color,#10b981) 15%, transparent);
-    color:var(--item-color,#10b981);
+.fpn-item:hover .fpn-icon,
+.fpn-item.fpn-active .fpn-icon{
+    background:rgba(var(--ir),.14);
+    color:var(--ic);
 }
-.fpn-item-label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-.fpn-badge{
-    background:rgba(239,68,68,.15);color:#ef4444;
-    font-size:9px;font-weight:800;
-    padding:2px 6px;border-radius:20px;
-    flex-shrink:0;
-}
-.fpn-item-dot{
-    width:5px;height:5px;border-radius:50%;
-    background:var(--item-color,#10b981);
-    flex-shrink:0;opacity:.8;
-}
+.fpn-label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fpn-dot{width:4px;height:4px;border-radius:50%;background:var(--ic,#10b981);opacity:.7;flex-shrink:0}
 
 /* Bottom */
-.fpn-bottom{flex-shrink:0;border-top:1px solid var(--fp-border)}
-
-.fpn-back-btn{
-    display:flex;align-items:center;gap:8px;
-    padding:10px 16px;margin:10px 8px 4px;
-    background:rgba(255,255,255,.03);
-    border:1px solid var(--fp-border);
-    border-radius:10px;
-    text-decoration:none;
-    color:var(--fp-text2);
-    font-size:11px;font-weight:600;
-    transition:all .15s;
+.fp-sb-foot{flex-shrink:0;border-top:1px solid var(--bd)}
+.fp-back{
+    display:flex;align-items:center;gap:7px;
+    padding:7px 10px;margin:8px 5px 3px;
+    border-radius:8px;border:1px solid var(--bd);
+    background:rgba(255,255,255,.02);
+    text-decoration:none;color:var(--t2);
+    font-size:11.5px;font-weight:600;
+    transition:all .13s;
 }
-.fpn-back-btn:hover{background:rgba(255,255,255,.07);color:var(--fp-text);text-decoration:none}
-.fpn-back-btn i{font-size:12px}
-
-.fpn-util{padding:4px 8px 8px}
-.fpn-util-item{
-    display:flex;align-items:center;gap:8px;
-    padding:6px 10px;border-radius:8px;
-    color:var(--fp-text3);font-size:11px;font-weight:500;
+.fp-back:hover{background:rgba(255,255,255,.06);color:var(--t1);text-decoration:none}
+.fp-back i{font-size:11px}
+.fp-util{padding:2px 5px 6px}
+.fp-util-a{
+    display:flex;align-items:center;gap:7px;
+    padding:5px 10px;border-radius:7px;
+    color:var(--t3);font-size:11px;font-weight:500;
     text-decoration:none;cursor:pointer;
-    transition:color .15s;
+    transition:color .1s;
 }
-.fpn-util-item:hover{color:var(--fp-text2);text-decoration:none}
-.fpn-util-item i{font-size:12px;width:16px;text-align:center}
-
-.fpn-user{
-    padding:12px 16px;
-    border-top:1px solid var(--fp-border);
-    display:flex;align-items:center;gap:10px;
-    background:rgba(0,0,0,.2);
+.fp-util-a:hover{color:var(--t2);text-decoration:none}
+.fp-util-a i{font-size:11px;width:13px;text-align:center}
+.fp-user{
+    padding:10px 14px;
+    border-top:1px solid var(--bd);
+    display:flex;align-items:center;gap:9px;
+    background:rgba(0,0,0,.18);
 }
-.fpn-user-avatar{
-    width:36px;height:36px;border-radius:50%;
-    background:rgba(16,185,129,.15);
-    border:2px solid rgba(16,185,129,.3);
+.fp-av{
+    width:30px;height:30px;border-radius:50%;
+    background:rgba(16,185,129,.12);
+    border:1.5px solid rgba(16,185,129,.22);
     display:flex;align-items:center;justify-content:center;
-    font-size:14px;font-weight:800;color:#10b981;
-    flex-shrink:0;
+    font-size:11px;font-weight:800;color:#10b981;flex-shrink:0;
 }
-.fpn-user-name{font-size:12px;font-weight:700;color:var(--fp-text);line-height:1.3}
-.fpn-user-role{font-size:10px;color:var(--fp-text3);margin-top:1px}
-.fpn-user-status{width:7px;height:7px;border-radius:50%;background:#10b981;margin-left:auto;flex-shrink:0;box-shadow:0 0 6px #10b981}
+.fp-uname{font-size:11.5px;font-weight:700;color:var(--t1);line-height:1.3}
+.fp-urole{font-size:9.5px;color:var(--t3)}
+.fp-udot{width:5px;height:5px;border-radius:50%;background:#10b981;margin-left:auto;box-shadow:0 0 4px #10b981}
 
-/* ===== MAIN ===== */
-.fpn-main{flex:1;min-width:0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
-
-/* Topbar */
-.fpn-topbar{
-    height:60px;min-height:60px;
-    background:var(--fp-bg1);
-    border-bottom:1px solid var(--fp-border);
+/* ── Topbar ─────────────────────────────────────────────────── */
+.fp-main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.fp-top{
+    height:var(--top-h);min-height:var(--top-h);
+    background:var(--bg1);
+    border-bottom:1px solid var(--bd);
     display:flex;align-items:center;justify-content:space-between;
-    padding:0 2rem;flex-shrink:0;
+    padding:0 1.5rem;flex-shrink:0;gap:1rem;
 }
-.fpn-topbar-left{display:flex;align-items:center;gap:12px}
-.fpn-breadcrumb{font-size:12px;color:var(--fp-text3)}
-.fpn-breadcrumb span{color:var(--fp-text);font-weight:700}
-.fpn-page-title{font-size:18px;font-weight:800;color:var(--fp-text)}
-.fpn-topbar-right{display:flex;align-items:center;gap:8px}
+.fp-bc{font-size:12px;color:var(--t3)}
+.fp-bc b{color:var(--t1);font-weight:700}
+.fp-bc-sep{margin:0 5px;opacity:.4}
+.fp-top-r{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.fp-top-btn{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:5px 12px;border-radius:7px;
+    font-size:11.5px;font-weight:650;cursor:pointer;
+    border:1px solid;transition:all .13s;text-decoration:none;white-space:nowrap;
+    font-family:'Inter',sans-serif;
+}
+.fp-top-btn:hover{transform:translateY(-1px);text-decoration:none}
+.fp-top-btn.prim{background:var(--g);border-color:var(--g);color:#011a0d}
+.fp-top-btn.prim:hover{background:#0ea572;color:#011a0d}
+.fp-top-btn.ghost{background:rgba(255,255,255,.03);border-color:var(--bd);color:var(--t2)}
+.fp-top-btn.ghost:hover{color:var(--t1);border-color:var(--bd2)}
+.fp-top-icon{
+    width:30px;height:30px;border-radius:7px;
+    border:1px solid var(--bd);
+    background:rgba(255,255,255,.03);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--t2);font-size:13px;cursor:pointer;
+    transition:all .13s;position:relative;
+}
+.fp-top-icon:hover{color:var(--t1);border-color:var(--bd2)}
+.fp-bell-dot{
+    position:absolute;top:5px;right:5px;
+    width:5px;height:5px;border-radius:50%;
+    background:#ef4444;border:1.5px solid var(--bg1);
+}
 
-.fpn-topbar-btn{
-    display:inline-flex;align-items:center;gap:6px;
-    padding:7px 14px;border-radius:9px;font-size:12px;font-weight:600;
-    cursor:pointer;border:1px solid;transition:all .15s;text-decoration:none;
+/* ── Content ────────────────────────────────────────────────── */
+.fp-body{
+    flex:1;overflow-y:auto;
+    padding:1.5rem;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(255,255,255,.06) transparent;
+}
+.fp-body::-webkit-scrollbar{width:4px}
+.fp-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.06);border-radius:2px}
+
+/* ── Footer ─────────────────────────────────────────────────── */
+.fp-foot{
+    padding:7px 1.5rem;
+    border-top:1px solid var(--bd);
+    font-size:9.5px;color:var(--t3);
+    display:flex;align-items:center;justify-content:space-between;
+    flex-shrink:0;background:var(--bg1);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   COMPONENTES GLOBAIS — usados em todos os templates
+══════════════════════════════════════════════════════════════ */
+
+/* Botões */
+.fp-btn{
+    display:inline-flex;align-items:center;gap:.4rem;
+    padding:.5rem 1rem;border-radius:8px;
+    font-size:12.5px;font-weight:650;cursor:pointer;
+    border:1px solid;text-decoration:none;
+    transition:all .13s;white-space:nowrap;
+    font-family:'Inter',sans-serif;
+}
+.fp-btn:hover{transform:translateY(-1px);text-decoration:none}
+.fp-btn-primary{background:var(--g);border-color:var(--g);color:#011a0d}
+.fp-btn-primary:hover{background:#0ea572;color:#011a0d}
+.fp-btn-danger{background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.22);color:#ef4444}
+.fp-btn-danger:hover{background:rgba(239,68,68,.15)}
+.fp-btn-ghost{background:rgba(255,255,255,.03);border-color:var(--bd);color:var(--t2)}
+.fp-btn-ghost:hover{color:var(--t1);border-color:var(--bd2)}
+
+/* Cards */
+.fp-card{
+    background:var(--bg2);
+    border:1px solid var(--bd);
+    border-radius:12px;
+    overflow:hidden;
+    margin-bottom:1rem;
+}
+.fp-card-header{
+    padding:.875rem 1.25rem;
+    border-bottom:1px solid var(--bd);
+    display:flex;align-items:center;justify-content:space-between;
+}
+.fp-card-title{
+    font-size:12.5px;font-weight:700;color:var(--t1);
+    display:flex;align-items:center;gap:.4rem;
+}
+.fp-card-body{padding:1.125rem 1.25rem}
+.fp-card-body.no-pad{padding:0}
+
+/* Tabelas */
+.fp-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.fp-table thead th{
+    padding:.6rem 1.25rem;
+    font-size:9px;font-weight:700;color:var(--t3);
+    text-transform:uppercase;letter-spacing:1px;
+    border-bottom:1px solid var(--bd);
+    text-align:left;
+    background:rgba(255,255,255,.015);
     white-space:nowrap;
 }
-.fpn-topbar-btn:hover{transform:translateY(-1px);text-decoration:none}
-.fpn-topbar-btn.primary{background:#10b981;border-color:#10b981;color:#000}
-.fpn-topbar-btn.primary:hover{background:#059669;color:#000}
-.fpn-topbar-btn.ghost{background:rgba(255,255,255,.04);border-color:var(--fp-border);color:var(--fp-text2)}
-.fpn-topbar-btn.ghost:hover{color:var(--fp-text);border-color:rgba(255,255,255,.15)}
-
-.fpn-notif-btn{
-    width:34px;height:34px;border-radius:9px;
-    background:rgba(255,255,255,.04);border:1px solid var(--fp-border);
-    display:flex;align-items:center;justify-content:center;
-    color:var(--fp-text2);cursor:pointer;position:relative;transition:all .15s;
+.fp-table tbody td{
+    padding:.75rem 1.25rem;
+    border-bottom:1px solid rgba(255,255,255,.025);
+    vertical-align:middle;
 }
-.fpn-notif-btn:hover{color:var(--fp-text)}
-.fpn-notif-dot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:#ef4444;border:1.5px solid var(--fp-bg1)}
-
-/* Content */
-.fpn-content{flex:1;overflow-y:auto;padding:1.75rem 2rem;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent}
-.fpn-content::-webkit-scrollbar{width:4px}
-.fpn-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
-
-.fpn-footer{
-    padding:10px 2rem;border-top:1px solid var(--fp-border);
-    font-size:10px;color:var(--fp-text3);
-    display:flex;align-items:center;justify-content:space-between;
-    flex-shrink:0;background:var(--fp-bg1);
-}
-
-/* Shared component styles */
-.fp-btn{display:inline-flex;align-items:center;gap:.5rem;padding:.625rem 1.25rem;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid;text-decoration:none;transition:all .2s;white-space:nowrap}
-.fp-btn:hover{transform:translateY(-1px);text-decoration:none}
-.fp-btn-primary{background:var(--fp-green);border-color:var(--fp-green);color:#000}
-.fp-btn-primary:hover{background:#059669;color:#000}
-.fp-btn-danger{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:#ef4444}
-.fp-btn-danger:hover{background:rgba(239,68,68,.18);color:#ef4444}
-.fp-btn-ghost{background:rgba(255,255,255,.04);border-color:var(--fp-border);color:var(--fp-text2)}
-.fp-btn-ghost:hover{color:var(--fp-text);border-color:rgba(255,255,255,.15)}
-.fp-card{background:var(--fp-bg2);border:1px solid var(--fp-border);border-radius:16px;overflow:hidden;margin-bottom:1.25rem}
-.fp-card-header{padding:1rem 1.5rem;border-bottom:1px solid var(--fp-border);display:flex;align-items:center;justify-content:space-between}
-.fp-card-title{font-size:13px;font-weight:700;color:var(--fp-text);display:flex;align-items:center;gap:.5rem}
-.fp-card-body{padding:1.25rem 1.5rem}
-.fp-card-body.no-pad{padding:0}
-.fp-table{width:100%;border-collapse:collapse;font-size:13px}
-.fp-table thead th{padding:.75rem 1.5rem;font-size:9px;font-weight:700;color:var(--fp-text3);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--fp-border);text-align:left}
-.fp-table tbody td{padding:.875rem 1.5rem;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle}
 .fp-table tbody tr:last-child td{border-bottom:none}
-.fp-table tbody tr:hover td{background:rgba(255,255,255,.015)}
-.fp-status{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}
-.fp-status::before{content:'';width:5px;height:5px;border-radius:50%}
-.fp-status.green{background:rgba(16,185,129,.1);color:#10b981}.fp-status.green::before{background:#10b981}
-.fp-status.red{background:rgba(239,68,68,.1);color:#ef4444}.fp-status.red::before{background:#ef4444}
-.fp-status.gold{background:rgba(245,158,11,.1);color:#f59e0b}.fp-status.gold::before{background:#f59e0b}
-.fp-status.blue{background:rgba(59,130,246,.1);color:#3b82f6}.fp-status.blue::before{background:#3b82f6}
-.fp-status.gray{background:rgba(255,255,255,.05);color:#8892a4}.fp-status.gray::before{background:#8892a4}
-.fp-progress{height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
-.fp-progress-fill{height:100%;border-radius:3px;transition:width .5s}
-.fp-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center}
+.fp-table tbody tr:hover td{background:rgba(255,255,255,.012)}
+
+/* Status pills */
+.fp-pill{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:2px 8px;border-radius:20px;
+    font-size:10px;font-weight:700;border:1px solid;
+}
+.fp-pill::before{content:'';width:4px;height:4px;border-radius:50%}
+.fp-pill.green{background:rgba(16,185,129,.08);color:#10b981;border-color:rgba(16,185,129,.18)}.fp-pill.green::before{background:#10b981}
+.fp-pill.red{background:rgba(239,68,68,.08);color:#ef4444;border-color:rgba(239,68,68,.18)}.fp-pill.red::before{background:#ef4444}
+.fp-pill.gold{background:rgba(245,158,11,.08);color:#f59e0b;border-color:rgba(245,158,11,.18)}.fp-pill.gold::before{background:#f59e0b}
+.fp-pill.blue{background:rgba(59,130,246,.08);color:#3b82f6;border-color:rgba(59,130,246,.18)}.fp-pill.blue::before{background:#3b82f6}
+.fp-pill.purple{background:rgba(139,92,246,.08);color:#8b5cf6;border-color:rgba(139,92,246,.18)}.fp-pill.purple::before{background:#8b5cf6}
+.fp-pill.gray{background:rgba(255,255,255,.04);color:#8691a8;border-color:rgba(255,255,255,.08)}.fp-pill.gray::before{background:#8691a8}
+
+/* Alias .fp-status → .fp-pill (compatibilidade) */
+.fp-status{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid}
+.fp-status::before{content:'';width:4px;height:4px;border-radius:50%}
+.fp-status.green{background:rgba(16,185,129,.08);color:#10b981;border-color:rgba(16,185,129,.18)}.fp-status.green::before{background:#10b981}
+.fp-status.red{background:rgba(239,68,68,.08);color:#ef4444;border-color:rgba(239,68,68,.18)}.fp-status.red::before{background:#ef4444}
+.fp-status.gold{background:rgba(245,158,11,.08);color:#f59e0b;border-color:rgba(245,158,11,.18)}.fp-status.gold::before{background:#f59e0b}
+.fp-status.blue{background:rgba(59,130,246,.08);color:#3b82f6;border-color:rgba(59,130,246,.18)}.fp-status.blue::before{background:#3b82f6}
+.fp-status.gray{background:rgba(255,255,255,.04);color:#8691a8;border-color:rgba(255,255,255,.08)}.fp-status.gray::before{background:#8691a8}
+
+/* Progress bar */
+.fp-progress{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.fp-progress-fill{height:100%;border-radius:2px;transition:width .4s}
+
+/* KPI cards */
+.fp-kpi-grid{display:grid;gap:.875rem;margin-bottom:1.25rem}
+.fp-kpi-grid.col2{grid-template-columns:repeat(2,1fr)}
+.fp-kpi-grid.col3{grid-template-columns:repeat(3,1fr)}
+.fp-kpi-grid.col4{grid-template-columns:repeat(4,1fr)}
+.fp-kpi{
+    background:var(--bg2);
+    border:1px solid var(--bd);
+    border-radius:12px;
+    padding:1.125rem 1.25rem;
+    position:relative;overflow:hidden;
+}
+.fp-kpi::after{
+    content:'';position:absolute;
+    top:0;left:0;right:0;height:2px;
+    border-radius:12px 12px 0 0;
+    background:var(--kpi-color,#10b981);
+}
+.fp-kpi-label{font-size:9.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:.5rem}
+.fp-kpi-val{font-size:20px;font-weight:900;color:var(--t1);line-height:1.1;margin-bottom:.25rem}
+.fp-kpi-sub{font-size:10px;color:var(--t3)}
+
+/* Modais */
+.fp-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center}
 .fp-modal-bg.open{display:flex}
-.fp-modal{background:var(--fp-bg1);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:2rem;width:90%;max-width:480px;max-height:90vh;overflow-y:auto}
-.fp-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
-.fp-modal-title{font-size:16px;font-weight:800;color:var(--fp-text)}
-.fp-modal-close{background:rgba(255,255,255,.06);border:1px solid var(--fp-border);color:var(--fp-text2);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.fp-modal-close:hover{color:var(--fp-text)}
-.fp-form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-.fp-field{margin-bottom:1rem}
-.fp-field label{display:block;font-size:10px;font-weight:700;color:var(--fp-text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem}
-.fp-input{width:100%;padding:.75rem 1rem;background:var(--fp-bg3);border:1px solid var(--fp-border);border-radius:10px;color:var(--fp-text);font-size:13px;outline:none;transition:border-color .2s;color-scheme:dark}
-.fp-input:focus{border-color:rgba(16,185,129,.5)}
-.fp-input::placeholder{color:var(--fp-text3)}
-.fp-select{width:100%;padding:.75rem 1rem;background:var(--fp-bg3);border:1px solid var(--fp-border);border-radius:10px;color:var(--fp-text);font-size:13px;outline:none}
-.fp-modal-footer{display:flex;gap:.75rem;margin-top:1.5rem}
-.fp-btn-confirm{flex:1;padding:.875rem;background:var(--fp-green);border:none;border-radius:10px;color:#000;font-size:14px;font-weight:800;cursor:pointer;transition:background .15s}
-.fp-btn-confirm:hover{background:#059669}
-.fp-btn-dismiss{flex:1;padding:.875rem;background:rgba(255,255,255,.04);border:1px solid var(--fp-border);border-radius:10px;color:var(--fp-text2);font-size:14px;cursor:pointer}
-.fp-empty{text-align:center;padding:3rem;color:var(--fp-text3)}
-.fp-empty-icon{font-size:44px;margin-bottom:.75rem;opacity:.2}
-.fp-empty-text{font-size:13px}
-@media(max-width:900px){.fpn-sidebar{display:none}.fpn-content{padding:1.25rem}}
+.fp-modal{
+    background:var(--bg1);
+    border:1px solid var(--bd2);
+    border-radius:16px;
+    padding:1.625rem;
+    width:90%;max-width:480px;
+    max-height:90vh;overflow-y:auto;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.fp-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+.fp-modal-title{font-size:14.5px;font-weight:800;color:var(--t1)}
+.fp-modal-close{
+    background:rgba(255,255,255,.05);border:1px solid var(--bd);
+    color:var(--t2);width:27px;height:27px;border-radius:7px;
+    cursor:pointer;font-size:12px;
+    display:flex;align-items:center;justify-content:center;
+    transition:all .12s;
+}
+.fp-modal-close:hover{color:var(--t1)}
+.fp-form-row{display:grid;grid-template-columns:1fr 1fr;gap:.875rem}
+.fp-field{margin-bottom:.875rem}
+.fp-field-label,.fp-field label{
+    display:block;font-size:9.5px;font-weight:700;
+    color:var(--t2);text-transform:uppercase;
+    letter-spacing:.5px;margin-bottom:.4rem;
+}
+.fp-input{
+    width:100%;padding:.65rem .9rem;
+    background:var(--bg3);border:1px solid var(--bd);
+    border-radius:8px;color:var(--t1);
+    font-size:12.5px;outline:none;
+    transition:border-color .15s;color-scheme:dark;
+    font-family:'Inter',sans-serif;
+}
+.fp-input:focus{border-color:rgba(16,185,129,.4)}
+.fp-input::placeholder{color:var(--t3)}
+.fp-select{
+    width:100%;padding:.65rem .9rem;
+    background:var(--bg3);border:1px solid var(--bd);
+    border-radius:8px;color:var(--t1);
+    font-size:12.5px;outline:none;
+    font-family:'Inter',sans-serif;
+}
+.fp-modal-footer{display:flex;gap:.625rem;margin-top:1.25rem}
+.fp-btn-confirm{
+    flex:1;padding:.75rem;background:var(--g);border:none;
+    border-radius:8px;color:#011a0d;font-size:13px;font-weight:800;
+    cursor:pointer;transition:background .14s;font-family:'Inter',sans-serif;
+}
+.fp-btn-confirm:hover{background:#0ea572}
+.fp-btn-dismiss{
+    flex:1;padding:.75rem;
+    background:rgba(255,255,255,.04);border:1px solid var(--bd);
+    border-radius:8px;color:var(--t2);font-size:13px;
+    cursor:pointer;font-family:'Inter',sans-serif;
+}
+
+/* Empty states */
+.fp-empty{text-align:center;padding:3.5rem 2rem;color:var(--t3)}
+.fp-empty-icon{font-size:40px;margin-bottom:.75rem;opacity:.15}
+.fp-empty-text{font-size:13px;color:var(--t2)}
+
+/* Alerta panel */
+.fp-alert-panel{
+    display:none;position:fixed;
+    top:calc(var(--top-h) + 8px);right:1.25rem;
+    width:300px;
+    background:var(--bg1);
+    border:1px solid var(--bd2);
+    border-radius:12px;
+    z-index:9999;
+    box-shadow:0 16px 48px rgba(0,0,0,.55);
+    overflow:hidden;
+}
+.fp-alert-head{
+    padding:10px 14px;
+    border-bottom:1px solid var(--bd);
+    display:flex;align-items:center;justify-content:space-between;
+}
+.fp-alert-head span{font-size:12px;font-weight:700;color:var(--t1)}
+.fp-alert-close{cursor:pointer;color:var(--t3);font-size:12px;transition:color .12s}
+.fp-alert-close:hover{color:var(--t2)}
+.fp-alert-body{max-height:280px;overflow-y:auto;padding:6px}
+.fp-alert-item{
+    padding:8px 10px;margin-bottom:3px;
+    border-radius:7px;
+    background:rgba(255,255,255,.025);
+    border-left:2px solid var(--al-color,#8691a8);
+}
+.fp-alert-item-title{font-size:11px;font-weight:700;color:var(--t1);margin-bottom:1px}
+.fp-alert-item-msg{font-size:10.5px;color:var(--t2)}
+.fp-alert-empty{padding:20px;text-align:center;font-size:11.5px;color:var(--t3)}
+
+@media(max-width:900px){
+    .fp-sb{display:none}
+    .fp-body{padding:1rem}
+    .fp-kpi-grid.col4{grid-template-columns:1fr 1fr}
+    .fp-kpi-grid.col3{grid-template-columns:1fr 1fr}
+}
 </style>
 </head>
 <body>
+{$rnbNav}
+<div class="fp-shell">
 
-<!-- SIDEBAR -->
-<aside class="fpn-sidebar">
-    <div class="fpn-brand">
-        <div class="fpn-brand-logo">₦</div>
+<!-- ═══ SIDEBAR ═══════════════════════════════════════════════ -->
+<aside class="fp-sb">
+    <div class="fp-brand">
+        <div class="fp-logo">FP</div>
         <div>
-            <div class="fpn-brand-name">Finance Pro</div>
-            <div class="fpn-brand-sub">Rádio New Band · Angola</div>
+            <div class="fp-brand-name">Finance Pro</div>
+            <div class="fp-brand-sub">Rádio New Band · Angola</div>
         </div>
     </div>
 
-    <div class="fpn-period">
-        <div class="fpn-period-txt"><i class="bi bi-calendar3"></i> <?= ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][(int)date('m')-1] . ' ' . date('Y') ?></div>
-        <span class="fpn-period-arrow">▾</span>
+    <div class="fp-period">
+        <i class="bi bi-calendar3"></i>
+        <span class="fp-period-txt">{$periodoLabel}</span>
+        <span class="fp-period-tag">Actual</span>
     </div>
 
-    <nav class="fpn-nav">{$navHtml}</nav>
+    <nav class="fp-nav">{$navHtml}</nav>
 
-    <div class="fpn-bottom">
-        <a href="/public/pulso/{$stationId}" class="fpn-back-btn">
-            <i class="bi bi-arrow-left"></i> Voltar ao PULSO
+    <div class="fp-sb-foot">
+        <a href="/public/pulso/{$stationId}" class="fp-back">
+            <i class="bi bi-arrow-left"></i>
+            <span>Voltar ao PULSO</span>
         </a>
-        <div class="fpn-util">
-            <a href="javascript:void(0)" onclick="fpnModalConfig()" class="fpn-util-item"><i class="bi bi-gear"></i> Configurações</a>
-            <a href="javascript:void(0)" onclick="fpnModalUsers()" class="fpn-util-item"><i class="bi bi-people"></i> Utilizadores</a>
+        <div class="fp-util">
+            <a onclick="fpCfg()" class="fp-util-a"><i class="bi bi-gear"></i> Configurações</a>
+            <a onclick="fpUsr()" class="fp-util-a"><i class="bi bi-people"></i> Utilizadores</a>
         </div>
+        <div class="fp-user">
+            <div class="fp-av">N</div>
+            <div>
+                <div class="fp-uname">Newton dos Santos</div>
+                <div class="fp-urole">Administrador</div>
+            </div>
+            <div class="fp-udot"></div>
+        </div>
+    </div>
+</aside>
 
-<!-- MODAL CONFIGURAÇÕES -->
-<div id="fpn-modal-config" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:2000;align-items:center;justify-content:center">
-    <div style="background:#0c1018;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:2rem;width:90%;max-width:480px;max-height:90vh;overflow-y:auto">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
-            <div style="font-size:16px;font-weight:800;color:#f0f4ff">⚙️ Configurações</div>
-            <button onclick="document.getElementById('fpn-modal-config').style.display='none'"
-                    style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);color:#8892a4;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:13px">✕</button>
-        </div>
-        <div style="margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid rgba(255,255,255,.06)">
-            <div style="font-size:11px;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.8px;margin-bottom:.75rem">Informações da Estação</div>
-            <div style="font-size:13px;color:#8892a4;margin-bottom:.5rem">📻 Rádio New Band</div>
-            <div style="font-size:11px;color:#4a5568">Station ID: {$stationId} · Angola</div>
-        </div>
-        <div style="margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid rgba(255,255,255,.06)">
-            <div style="font-size:11px;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.8px;margin-bottom:.75rem">Moeda Padrão</div>
-            <div style="display:flex;align-items:center;gap:.75rem;padding:.75rem;background:rgba(255,255,255,.03);border-radius:10px">
-                <span style="font-size:20px">🇦🇴</span>
-                <div>
-                    <div style="font-size:13px;font-weight:700;color:#f0f4ff">Kwanza Angolano (AOA)</div>
-                    <div style="font-size:11px;color:#4a5568">Símbolo: Kz</div>
-                </div>
+<!-- ═══ MAIN ══════════════════════════════════════════════════ -->
+<div class="fp-main">
+    <header class="fp-top">
+        <div class="fp-bc">Finance Pro <span class="fp-bc-sep">›</span> <b>{$title}</b></div>
+        <div class="fp-top-r">
+            <a href="/public/financas/{$stationId}/exportar-pdf/dre" class="fp-top-btn ghost" style="font-size:11px">
+                <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+            </a>
+            <div class="fp-top-icon" id="fp-bell" title="Alertas">
+                <i class="bi bi-bell"></i>
+                <span class="fp-bell-dot" id="fp-bell-dot"></span>
             </div>
         </div>
-        <div style="margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid rgba(255,255,255,.06)">
-            <div style="font-size:11px;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.8px;margin-bottom:.75rem">Plano de Contas</div>
-            <div style="display:flex;align-items:center;gap:.75rem;padding:.75rem;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);border-radius:10px">
-                <span style="font-size:20px">✅</span>
-                <div>
-                    <div style="font-size:13px;font-weight:700;color:#10b981">PGC Angola — Activo</div>
-                    <div style="font-size:11px;color:#4a5568">46 contas configuradas</div>
-                </div>
-            </div>
+    </header>
+
+    <main class="fp-body">{$content}</main>
+
+    <footer class="fp-foot">
+        <span>Finance Pro · Rádio New Band Angola · PGC Angola</span>
+        <span><?= date('d/m/Y H:i') ?></span>
+    </footer>
+</div>
+</div><!-- shell -->
+
+<!-- ═══ PAINEL ALERTAS ════════════════════════════════════════ -->
+<div class="fp-alert-panel" id="fp-alert-panel">
+    <div class="fp-alert-head">
+        <span>🔔 Alertas</span>
+        <span class="fp-alert-close" id="fp-alert-close">✕</span>
+    </div>
+    <div class="fp-alert-body" id="fp-alert-body"></div>
+</div>
+
+<!-- ═══ MODAL CONFIGURAÇÕES ══════════════════════════════════ -->
+<div class="fp-modal-bg" id="fp-m-cfg">
+    <div class="fp-modal">
+        <div class="fp-modal-head">
+            <div class="fp-modal-title">⚙️ Configurações</div>
+            <button class="fp-modal-close" onclick="fpClose('fp-m-cfg')">✕</button>
         </div>
-        <div>
-            <div style="font-size:11px;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.8px;margin-bottom:.75rem">Contas Bancárias</div>
-            <a href="/public/financas/{$stationId}/conta-corrente"
-               style="display:flex;align-items:center;gap:.75rem;padding:.75rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;text-decoration:none;transition:border-color .15s"
-               onclick="document.getElementById('fpn-modal-config').style.display='none'">
-                <span style="font-size:20px">🏦</span>
-                <div>
-                    <div style="font-size:12px;font-weight:600;color:#f0f4ff">Gerir contas bancárias</div>
-                    <div style="font-size:11px;color:#4a5568">BFA + BPC configuradas</div>
+        <div style="display:flex;flex-direction:column;gap:.625rem">
+            <div style="padding:.875rem;background:var(--bg3);border:1px solid var(--bd);border-radius:9px;display:flex;align-items:center;gap:.75rem">
+                <span style="font-size:22px">📊</span>
+                <div style="flex:1">
+                    <div style="font-size:12px;font-weight:700;color:var(--t1)">PGC Angola — 46 contas</div>
+                    <div style="font-size:10px;color:var(--t3);margin-top:1px">Plano de Contas activo · Moeda: Kz</div>
                 </div>
-                <span style="margin-left:auto;color:#4a5568;font-size:12px">→</span>
+                <span style="font-size:9.5px;font-weight:700;color:var(--g);background:rgba(16,185,129,.1);padding:2px 7px;border-radius:12px;border:1px solid rgba(16,185,129,.18)">✓ OK</span>
+            </div>
+            <a href="/public/financas/{$stationId}/conta-corrente" onclick="fpClose('fp-m-cfg')"
+               style="padding:.875rem;background:var(--bg3);border:1px solid var(--bd);border-radius:9px;display:flex;align-items:center;gap:.75rem;text-decoration:none;transition:border-color .13s">
+                <span style="font-size:22px">🏦</span>
+                <div style="flex:1">
+                    <div style="font-size:12px;font-weight:700;color:var(--t1)">Contas Bancárias</div>
+                    <div style="font-size:10px;color:var(--t3);margin-top:1px">BFA Principal · BPC Operacional</div>
+                </div>
+                <span style="font-size:12px;color:var(--t3)">→</span>
             </a>
         </div>
     </div>
 </div>
 
-<!-- MODAL UTILIZADORES -->
-<div id="fpn-modal-users" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:2000;align-items:center;justify-content:center">
-    <div style="background:#0c1018;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:2rem;width:90%;max-width:420px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
-            <div style="font-size:16px;font-weight:800;color:#f0f4ff">👥 Utilizadores</div>
-            <button onclick="document.getElementById('fpn-modal-users').style.display='none'"
-                    style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);color:#8892a4;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:13px">✕</button>
+<!-- ═══ MODAL UTILIZADORES ═══════════════════════════════════ -->
+<div class="fp-modal-bg" id="fp-m-usr">
+    <div class="fp-modal" style="max-width:400px">
+        <div class="fp-modal-head">
+            <div class="fp-modal-title">👥 Utilizadores</div>
+            <button class="fp-modal-close" onclick="fpClose('fp-m-usr')">✕</button>
         </div>
-        <div style="display:flex;align-items:center;gap:.875rem;padding:1rem;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15);border-radius:12px;margin-bottom:1rem">
-            <div style="width:44px;height:44px;border-radius:50%;background:rgba(16,185,129,.15);border:2px solid rgba(16,185,129,.3);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#10b981">N</div>
+        <div style="display:flex;align-items:center;gap:.875rem;padding:.875rem;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.14);border-radius:10px;margin-bottom:.875rem">
+            <div style="width:40px;height:40px;border-radius:50%;background:rgba(16,185,129,.14);border:2px solid rgba(16,185,129,.28);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#10b981">N</div>
             <div>
-                <div style="font-size:14px;font-weight:800;color:#f0f4ff">Newton dos Santos</div>
-                <div style="font-size:11px;color:#4a5568">Administrador · Acesso total</div>
+                <div style="font-size:13px;font-weight:800;color:var(--t1)">Newton dos Santos</div>
+                <div style="font-size:10px;color:var(--t3)">Administrador · Acesso total</div>
             </div>
-            <div style="margin-left:auto;background:rgba(16,185,129,.1);color:#10b981;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px">ADMIN</div>
+            <span style="margin-left:auto;font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;background:rgba(16,185,129,.1);color:#10b981;border:1px solid rgba(16,185,129,.2)">ADMIN</span>
         </div>
-        <div style="padding:.875rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:10px;text-align:center">
-            <div style="font-size:12px;color:#4a5568;margin-bottom:.5rem">Gestão de utilizadores disponível em breve</div>
-            <div style="font-size:11px;color:#4a5568">Por agora apenas o administrador tem acesso ao Finance Pro</div>
+        <div style="padding:.875rem;background:rgba(255,255,255,.02);border:1px solid var(--bd);border-radius:9px;text-align:center;font-size:11px;color:var(--t3)">
+            Gestão multi-utilizador disponível em breve
         </div>
     </div>
 </div>
 
 <script>
-function fpnModalConfig() {
-    document.getElementById('fpn-modal-config').style.display='flex';
-}
-function fpnModalUsers() {
-    document.getElementById('fpn-modal-users').style.display='flex';
-}
-document.addEventListener('click', function(e) {
-    const mc = document.getElementById('fpn-modal-config');
-    const mu = document.getElementById('fpn-modal-users');
-    if (mc && e.target === mc) mc.style.display='none';
-    if (mu && e.target === mu) mu.style.display='none';
+const FP_SID      = {$stationId};
+const FP_ALERTAS  = {$alertasJson};
+const AL_CORES    = {danger:'#ef4444',warning:'#f59e0b',info:'#00e5ff',success:'#10b981'};
+
+// Modais
+function fpCfg()  { document.getElementById('fp-m-cfg').classList.add('open'); }
+function fpUsr()  { document.getElementById('fp-m-usr').classList.add('open'); }
+function fpClose(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.fp-modal-bg').forEach(m=>{
+    m.addEventListener('click', e=>{ if(e.target===m) m.classList.remove('open'); });
 });
+
+// Bell
+(function(){
+    const bell  = document.getElementById('fp-bell');
+    const panel = document.getElementById('fp-alert-panel');
+    const body  = document.getElementById('fp-alert-body');
+    const close = document.getElementById('fp-alert-close');
+    const dot   = document.getElementById('fp-bell-dot');
+
+    if (!FP_ALERTAS || FP_ALERTAS.length === 0) {
+        dot.style.display = 'none';
+        body.innerHTML = '<div class="fp-alert-empty">✅ Sem alertas activos</div>';
+    } else {
+        body.innerHTML = FP_ALERTAS.map(a=>`
+            <div class="fp-alert-item" style="--al-color:${AL_CORES[a.tipo]||'#8691a8'}">
+                <div class="fp-alert-item-title">${a.icon||'⚠️'} ${a.titulo}</div>
+                <div class="fp-alert-item-msg">${a.mensagem}</div>
+            </div>`).join('');
+    }
+
+    bell.addEventListener('click',()=>{
+        panel.style.display = panel.style.display==='block' ? 'none' : 'block';
+    });
+    close.addEventListener('click',()=>{ panel.style.display='none'; });
+    document.addEventListener('click',e=>{
+        if(!bell.contains(e.target)&&!panel.contains(e.target)) panel.style.display='none';
+    });
+})();
 </script>
-        <div class="fpn-user">
-            <div class="fpn-user-avatar">N</div>
-            <div>
-                <div class="fpn-user-name">Newton dos Santos</div>
-                <div class="fpn-user-role">Administrador</div>
-            </div>
-            <div class="fpn-user-status"></div>
-        </div>
-    </div>
-</aside>
-
-<!-- MAIN -->
-<div class="fpn-main">
-    <header class="fpn-topbar">
-        <div class="fpn-topbar-left">
-            <div class="fpn-page-title">{$title}</div>
-        </div>
-        <div class="fpn-topbar-right">
-            <div class="fpn-notif-btn"><i class="bi bi-bell"></i><span class="fpn-notif-dot"></span></div>
-        </div>
-    </header>
-    <main class="fpn-content">{$content}</main>
-    <footer class="fpn-footer">
-        <span>Finance Pro · Rádio New Band Angola</span>
-        <span><?= date('d/m/Y H:i') ?></span>
-    </footer>
-</div>
-
 </body>
 </html>
 HTML;
     }
+
 
     public function fpPlanoContasAction(ServerRequest $request, Response $response, array $params): ResponseInterface
     {
