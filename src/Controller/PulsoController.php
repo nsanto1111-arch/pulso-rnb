@@ -2008,8 +2008,8 @@ document.querySelectorAll('.fp-modal-bg').forEach(m=>{
         body.innerHTML = '<div class="fp-alert-empty">✅ Sem alertas activos</div>';
     } else {
         body.innerHTML = FP_ALERTAS.map(a=>`
-            <div class="fp-alert-item" style="--al-color:${AL_CORES[a.tipo]||'#8691a8'}">
-                <div class="fp-alert-item-title">${a.icon||'⚠️'} ${a.titulo}</div>
+            <div class="fp-alert-item" style="--al-color:${AL_CORES[a.tipo] || '#8691a8'}">
+                <div class="fp-alert-item-title">${a.icon || '⚠️'} ${a.titulo}</div>
                 <div class="fp-alert-item-msg">${a.mensagem}</div>
             </div>`).join('');
     }
