@@ -1,0 +1,43 @@
+/* ═══════════════════════════════════════════
+   RNB SUITE — Design System
+   Baseado no logotipo oficial Rádio New Band
+═══════════════════════════════════════════ */
+:root {
+    /* ── Cores do Logo ── */
+    --rnb-blue:    #0099ff;
+    --rnb-cyan:    #00d4ff;
+    --rnb-purple:  #8b2fff;
+    --rnb-violet:  #b44fff;
+    --rnb-orange:  #ff8c00;
+    --rnb-red:     #ff2244;
+    --rnb-pink:    #ff4db8;
+    --rnb-yellow:  #ffd000;
+    --rnb-green:   #00cc66;
+
+    /* ── Fundos ── */
+    --rnb-void:    #000000;
+    --rnb-bg1:     #05050d;
+    --rnb-bg2:     #08081a;
+    --rnb-bg3:     #0d0d22;
+    --rnb-bg4:     #121230;
+    --rnb-bg5:     #18183a;
+
+    /* ── Texto ── */
+    --rnb-text:    #f0f0ff;
+    --rnb-soft:    #8888b8;
+    --rnb-dim:     #444466;
+    --rnb-line:    rgba(255,255,255,.06);
+    --rnb-line2:   rgba(255,255,255,.11);
+
+    /* ── Gradiente do Logo ── */
+    --rnb-gradient: linear-gradient(135deg,
+        #0099ff 0%, #00d4ff 20%,
+        #8b2fff 40%, #ff4db8 60%,
+        #ff8c00 80%, #ffd000 100%);
+
+    --rnb-gradient-short: linear-gradient(135deg, #0099ff, #8b2fff, #ff4db8);
+
+    /* ── Tipografia ── */
+    --rnb-ff: 'Inter', system-ui, sans-serif;
+    --rnb-fm: 'JetBrains Mono', monospace;
+}

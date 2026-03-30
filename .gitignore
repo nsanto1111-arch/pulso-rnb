@@ -1,0 +1,18 @@
+# Backups
+backups/
+*.bak
+*.bak-*
+*.backup
+*.bak.*
+
+# Vendors (grandes demais)
+vendor/
+vendor-plugin/
+
+# Temporários
+*.tmp
+*.cache
+/test-*.php
+
+# Ficheiros sensíveis
+.env

@@ -1,0 +1,235 @@
+<?php
+$provincias = ['Luanda','Benguela','Huambo','Bié','Moxico','Lunda Norte','Lunda Sul','Cuanza Norte','Cuanza Sul','Malanje','Uíge','Zaire','Cabinda','Cuando Cubango','Cunene','Huíla','Namibe','Bengo'];
+$generos = ['Kizomba','Semba','Kuduro','Afrobeat','Hip-Hop','Rap','R&B','Zouk','Gospel','Tradicional','Funk','Pop','Rock','Reggae','Soul','Jazz','Electrónica','Outro'];
+
+$errosHtml = '';
+if (!empty($erros)) {
+    $errosHtml = '<div class="alert-error" style="margin-bottom:20px;padding:15px;background:#fee;border:1px solid #c00;border-radius:8px;color:#c00"><strong>Erros encontrados:</strong><ul style="margin:8px 0 0 20px">';
+    foreach ($erros as $e) $errosHtml .= '<li>'.$e.'</li>';
+    $errosHtml .= '</ul></div>';
+}
+?>
+
+<?= $errosHtml ?>
+
+<?php $formAction = isset($isEdit) && $isEdit ? "/public/pulso/{$stationId}/ouvintes/" . $dados["id"] . "/editar" : ""; ?>
+<form method="POST" id="formOuvinte" class="form-ouvinte" action="<?= $formAction ?>">
+    <?php if (isset($isEdit) && $isEdit): ?>
+    <input type="hidden" name="id" value="<?= $dados["id"] ?? "" ?>">
+    <?php endif; ?>
+    
+    <?php if (isset($isEdit) && $isEdit): ?>
+    <input type="hidden" name="id" value="<?= $dados["id"] ?? "" ?>">
+    <?php endif; ?>
+    
+    <!-- DADOS PESSOAIS -->
+    <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><h3><i class="bi bi-person-plus"></i> Dados Pessoais</h3></div>
+        <div style="padding:20px">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Nome Completo *</label>
+                    <input type="text" name="nome" required class="form-input" value="<?= htmlspecialchars($dados['nome'] ?? '') ?>" placeholder="Ex: João Silva Santos">
+                </div>
+                <div class="form-group">
+                    <label>Telefone *</label>
+                    <input type="text" name="telefone" pattern="\+?[0-9\s]+" required class="form-input" id="telefone" value="<?= htmlspecialchars($dados['telefone'] ?? '') ?>" placeholder="Ex: +244 900 000 000">
+                    <small style="color:var(--text-3);font-size:11px">Formato internacional: +código país</small>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" class="form-input" value="<?= htmlspecialchars($dados['email'] ?? '') ?>" placeholder="exemplo@email.com">
+                </div>
+                <div class="form-group">
+                    <label>Data de Nascimento *</label>
+                    <input type="date" name="data_nascimento" required class="form-input" id="dataNasc" value="<?= htmlspecialchars($dados['data_nascimento'] ?? '') ?>" max="<?= date('Y-m-d', strtotime('-10 years')) ?>">
+                    <small id="idadePreview" style="color:#00e5ff;font-size:11px"></small>
+                </div>
+                <div class="form-group" style="grid-column:1/-1">
+                    <label>Género *</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="genero" value="masculino" <?= ($dados['genero'] ?? '') === 'masculino' ? 'checked' : '' ?> required>
+                            <span>👨 Masculino</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="genero" value="feminino" <?= ($dados['genero'] ?? '') === 'feminino' ? 'checked' : '' ?>>
+                            <span>👩 Feminino</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="genero" value="outro" <?= ($dados['genero'] ?? '') === 'outro' ? 'checked' : '' ?>>
+                            <span>⚧ Outro</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOCALIZAÇÃO -->
+    <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><h3><i class="bi bi-geo-alt"></i> Localização</h3></div>
+        <div style="padding:20px">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>País *</label>
+                    <input type="text" name="pais" required class="form-input" id="pais" value="<?= htmlspecialchars($dados["pais"] ?? "Angola") ?>" placeholder="Ex: Angola, Portugal, Brasil...">
+                </div>
+                <div class="form-group" id="provinciaGroup">
+                    <label>Região/Estado</label>
+                    <select name="provincia"  # Mantém nome do campo por compatibilidade class="form-input" id="provincia">
+                        <option value="">Selecione...</option>
+                        <?php foreach ($provincias as $p): ?>
+                        <option value="<?= $p ?>" <?= ($dados['provincia'] ?? '') === $p ? 'selected' : '' ?>><?= $p ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Município/Cidade *</label>
+                    <input type="text" name="municipio" required class="form-input" value="<?= htmlspecialchars($dados['municipio'] ?? '') ?>" placeholder="Ex: Belas, Viana, Kilamba...">
+                </div>
+                <div class="form-group">
+                    <label>Bairro</label>
+                    <input type="text" name="bairro" class="form-input" value="<?= htmlspecialchars($dados['bairro'] ?? '') ?>" placeholder="Ex: Talatona, Popular...">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PREFERÊNCIAS -->
+    <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><h3><i class="bi bi-music-note"></i> Preferências Musicais</h3></div>
+        <div style="padding:20px">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Programa Favorito</label>
+                    <input type="text" name="programa_favorito" class="form-input" value="<?= htmlspecialchars($dados['programa_favorito'] ?? '') ?>" placeholder="Ex: Morning Show, Drive Time...">
+                </div>
+                <div class="form-group">
+                    <label>Locutor Favorito</label>
+                    <input type="text" name="locutor_favorito" class="form-input" value="<?= htmlspecialchars($dados['locutor_favorito'] ?? '') ?>" placeholder="Ex: DJ Celso, Newton...">
+                </div>
+                <div class="form-group" style="grid-column:1/-1">
+                    <label>Géneros Musicais Favoritos (máximo 3)</label>
+                    <div class="checkbox-grid" id="generosGrid">
+                        <?php foreach ($generos as $g): ?>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="generos_musicais[]" value="<?= $g ?>" <?php 
+                                $generosSalvos = isset($dados['generos_musicais']) ? json_decode($dados['generos_musicais'], true) : [];
+                                echo in_array($g, $generosSalvos) ? 'checked' : '';
+                            ?>>
+                            <span><?= $g ?></span>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <small style="color:var(--text-3);font-size:11px">Selecione até 3 géneros</small>
+                </div>
+                <div class="form-group">
+                    <label>Como Conheceu a Rádio?</label>
+                    <select name="como_conheceu" class="form-input">
+                        <option value="">Selecione...</option>
+                        <option value="redes_sociais">📱 Redes Sociais</option>
+                        <option value="amigo">👥 Amigo/Familiar</option>
+                        <option value="publicidade">📺 Outdoor/Publicidade</option>
+                        <option value="google">🔍 Pesquisa Google</option>
+                        <option value="evento">🎉 Evento da Rádio</option>
+                        <option value="outro">❓ Outro</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTÕES -->
+    <div style="display:flex;gap:12px;justify-content:flex-end">
+        <a href="/public/pulso/<?= $stationId ?>/ouvintes" class="btn btn-outline">Cancelar</a>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> <?= isset($isEdit) && $isEdit ? "Atualizar Ouvinte" : "Criar Ouvinte" ?></button>
+    </div>
+</form>
+
+<style>
+.form-ouvinte{max-width:900px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:13px;font-weight:600;color:var(--text-2)}
+.form-input{padding:10px 14px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-size:14px;transition:.2s}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,255,0.1)}
+.radio-group,.checkbox-grid{display:flex;gap:12px;flex-wrap:wrap}
+.radio-label,.checkbox-label{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:8px 12px;border:1px solid var(--border);border-radius:6px;transition:.2s;background:rgba(0,0,0,0.2)}
+.radio-label:hover,.checkbox-label:hover{border-color:var(--accent);background:rgba(0,229,255,0.05)}
+.radio-label input[type=radio]:checked ~ span,.checkbox-label input[type=checkbox]:checked ~ span{color:var(--accent);font-weight:600}
+.btn{padding:10px 20px;border-radius:8px;font-weight:600;cursor:pointer;transition:.2s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--accent);color:#000;border:none}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,229,255,0.3)}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text-2)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+</style>
+
+<script>
+(function() {
+    const tel = document.getElementById('telefone');
+    const dataNasc = document.getElementById('dataNasc');
+    const pais = document.getElementById('pais');
+    const provinciaGroup = document.getElementById('provinciaGroup');
+    const checkboxes = document.querySelectorAll('input[name="generos_musicais[]"]');
+    
+    // Auto-formatar telefone angolano
+    tel.addEventListener('input', function(e) {
+        let v = e.target.value.replace(/\D/g, '');
+        if (v.length > 0 && !v.startsWith('244')) v = '244' + v;
+        v = v.substring(0, 12);
+        let f = '';
+        if (v.length > 3) f += ' ' + v.substring(3, 6);
+        if (v.length > 6) f += ' ' + v.substring(6, 9);
+        if (v.length > 9) f += ' ' + v.substring(9, 12);
+        e.target.value = f.trim();
+    });
+    
+    // Preview idade
+    dataNasc.addEventListener('change', function(e) {
+        if (e.target.value) {
+            const hoje = new Date();
+            const nasc = new Date(e.target.value);
+            let idade = hoje.getFullYear() - nasc.getFullYear();
+            const m = hoje.getMonth() - nasc.getMonth();
+            if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
+            document.getElementById('idadePreview').textContent = idade + ' anos';
+        }
+    });
+    
+    // Região sempre visível
+    pais.addEventListener('change', function(e) {
+        const isAngola = e.target.value.toLowerCase().includes('angola');
+        provinciaGroup.style.display = isAngola ? 'flex' : 'none';
+        const provinciaInput = document.getElementById('provincia');
+        
+        if (!isAngola) {
+            provinciaInput.removeAttribute('required');
+            provinciaInput.value = '';  // Limpar valor
+        } else {
+            provinciaInput.setAttribute('required', 'required');
+        }
+    });
+    
+    // Região sempre visível
+    document.addEventListener('DOMContentLoaded', function() {
+        const paisValue = pais.value || '';
+        const isAngola = paisValue.toLowerCase().includes('angola');
+        provinciaGroup.style.display = isAngola ? 'flex' : 'none';
+        if (!isAngola) {
+            document.getElementById('provincia').value = '';
+        }
+    });
+    
+    // Limitar a 3 géneros musicais
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            const checked = document.querySelectorAll('input[name="generos_musicais[]"]:checked');
+            if (checked.length > 3) {
+                this.checked = false;
+                alert('⚠️ Máximo 3 géneros musicais!');
+            }
+        });
+    });
+})();
+</script>

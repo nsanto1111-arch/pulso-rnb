@@ -1,0 +1,48 @@
+<svg viewBox="0 0 120 60" xmlns="http://www.w3.org/2000/svg">
+  <!-- Letra R: barras em arco -->
+  <g>
+    <!-- Haste vertical do R -->
+    <rect x="8" y="12" width="3" height="36" rx="1.5" fill="#0099ff"/>
+    <!-- Arco do R - barras curvas -->
+    <rect x="12" y="12" width="3" height="8" rx="1.5" fill="#00aaff"/>
+    <rect x="16" y="11" width="3" height="10" rx="1.5" fill="#00bbff"/>
+    <rect x="20" y="12" width="3" height="9" rx="1.5" fill="#00ccff"/>
+    <rect x="24" y="14" width="3" height="7" rx="1.5" fill="#33aaff"/>
+    <!-- Perna do R -->
+    <rect x="18" y="26" width="3" height="9" rx="1.5" fill="#5533ff"/>
+    <rect x="22" y="28" width="3" height="10" rx="1.5" fill="#7722ff"/>
+    <rect x="26" y="30" width="3" height="10" rx="1.5" fill="#9911ff"/>
+  </g>
+  <!-- Letra N -->
+  <g>
+    <rect x="34" y="12" width="3" height="36" rx="1.5" fill="#aa00ff"/>
+    <!-- Diagonal -->
+    <rect x="37" y="14" width="3" height="7" rx="1.5" fill="#cc00ee" transform="rotate(15,38.5,17.5)"/>
+    <rect x="40" y="18" width="3" height="7" rx="1.5" fill="#ee00cc" transform="rotate(15,41.5,21.5)"/>
+    <rect x="43" y="22" width="3" height="7" rx="1.5" fill="#ff00aa" transform="rotate(15,44.5,25.5)"/>
+    <rect x="46" y="26" width="3" height="7" rx="1.5" fill="#ff2288" transform="rotate(15,47.5,29.5)"/>
+    <rect x="49" y="30" width="3" height="7" rx="1.5" fill="#ff4466"/>
+    <rect x="52" y="12" width="3" height="36" rx="1.5" fill="#ff6644"/>
+  </g>
+  <!-- Letra B: círculo de barras -->
+  <g>
+    <!-- Haste do B -->
+    <rect x="60" y="12" width="3" height="36" rx="1.5" fill="#ff8800"/>
+    <!-- Arco superior -->
+    <rect x="64" y="12" width="3" height="7" rx="1.5" fill="#ffaa00"/>
+    <rect x="68" y="11" width="3" height="9" rx="1.5" fill="#ffcc00"/>
+    <rect x="72" y="12" width="3" height="8" rx="1.5" fill="#ffdd00"/>
+    <rect x="76" y="14" width="3" height="6" rx="1.5" fill="#ffee00"/>
+    <rect x="78" y="17" width="3" height="5" rx="1.5" fill="#eeee00"/>
+    <!-- Volta -->
+    <rect x="76" y="24" width="3" height="5" rx="1.5" fill="#ccdd00"/>
+    <rect x="72" y="22" width="3" height="6" rx="1.5" fill="#aaccff"/>
+    <!-- Arco inferior -->
+    <rect x="64" y="29" width="3" height="7" rx="1.5" fill="#88aaff"/>
+    <rect x="68" y="28" width="3" height="9" rx="1.5" fill="#6688ff"/>
+    <rect x="72" y="29" width="3" height="8" rx="1.5" fill="#4466ff"/>
+    <rect x="76" y="31" width="3" height="7" rx="1.5" fill="#2244ff"/>
+    <rect x="80" y="33" width="3" height="5" rx="1.5" fill="#0033ff"/>
+    <rect x="82" y="36" width="3" height="4" rx="1.5" fill="#0022ee"/>
+  </g>
+</svg>

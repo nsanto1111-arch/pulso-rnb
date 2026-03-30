@@ -1,0 +1,194 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Plugin\ProgramacaoPlugin\Controller;
+
+use App\Http\Response;
+use App\Http\ServerRequest;
+use Plugin\ProgramacaoPlugin\Service\ProgramacaoService;
+use Psr\Http\Message\ResponseInterface;
+
+class ProgramacaoApiController
+{
+    private ProgramacaoService $service;
+
+    public function __construct(ProgramacaoService $service)
+    {
+        $this->service = $service;
+    }
+
+    private function addCorsHeaders(Response $response): Response
+    {
+        return $response
+            ->withHeader('Access-Control-Allow-Origin', '*')
+            ->withHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+            ->withHeader('Access-Control-Allow-Headers', 'Content-Type');
+    }
+
+    public function noArAction(ServerRequest $request, Response $response, array $params): ResponseInterface
+    {
+        $response = $this->addCorsHeaders($response);
+        $stationId = (int) ($params['station_id'] ?? 0);
+        if ($stationId <= 0) {
+            return $response->withJson(['success' => false, 'error' => 'ID da estacao invalido'], 400);
+        }
+        $config = $this->service->getConfig($stationId);
+        $programaNoAr = $this->service->getProgramaNoAr($stationId);
+        if ($programaNoAr) {
+            return $response->withJson([
+                'success' => true,
+                'data' => [
+                    'programa' => [
+                        'id' => (int) $programaNoAr['id'],
+                        'nome' => $programaNoAr['nome'],
+                        'descricao' => $programaNoAr['descricao'],
+                        'banner' => $programaNoAr['banner'],
+                        'hora_inicio' => $programaNoAr['hora_inicio'],
+                        'hora_fim' => $programaNoAr['hora_fim'],
+                    ],
+                    'locutores' => $programaNoAr['locutores'] ?? '',
+                    'foto_locutor' => $programaNoAr['foto_locutor'] ?? null,
+                ],
+            ]);
+        }
+        return $response->withJson([
+            'success' => true,
+            'data' => [
+                'programa' => [
+                    'id' => 0,
+                    'nome' => $config['programa_padrao_nome'] ?? 'Programacao Musical',
+                    'descricao' => $config['programa_padrao_descricao'] ?? '',
+                    'banner' => null,
+                    'hora_inicio' => null,
+                    'hora_fim' => null,
+                ],
+                'locutores' => '',
+                'foto_locutor' => null,
+                'is_default' => true,
+            ],
+        ]);
+    }
+
+    public function widgetAction(ServerRequest $request, Response $response, array $params): ResponseInterface
+    {
+        $response = $this->addCorsHeaders($response);
+        $stationId = (int) ($params['station_id'] ?? 0);
+        if ($stationId <= 0) {
+            return $response->withJson(['success' => false, 'error' => 'ID da estacao invalido'], 400);
+        }
+        
+        $programaNoAr = $this->service->getProgramaNoAr($stationId);
+        $config = $this->service->getConfig($stationId);
+        $nowPlaying = $this->getNowPlaying($stationId);
+        
+        if ($programaNoAr) {
+            $programaNome = $programaNoAr['nome'];
+            $locutor = $programaNoAr['locutores'] ?? '';
+            $horaInicio = substr($programaNoAr['hora_inicio'], 0, 5);
+            $horaFim = substr($programaNoAr['hora_fim'], 0, 5);
+            $banner = $programaNoAr['banner'];
+            $fotoLocutor = $programaNoAr['foto_locutor'];
+        } else {
+            $programaNome = $config['programa_padrao_nome'] ?? 'Programacao Musical';
+            $locutor = '';
+            $horaInicio = '';
+            $horaFim = '';
+            $banner = null;
+            $fotoLocutor = null;
+        }
+        
+        // Estados fixos (programa + música)
+        $estados = [
+            ['tipo' => 'programa', 'linha1' => $horaInicio && $horaFim ? "{$horaInicio} - {$horaFim}" : 'No Ar', 'linha2' => $locutor ? "{$programaNome} • com {$locutor}" : $programaNome],
+            ['tipo' => 'musica', 'linha1' => 'A tocar', 'linha2' => $nowPlaying['song'] ?? 'Radio New Band'],
+        ];
+        
+        // Adicionar 1 mensagem aleatória do carrossel (com variáveis processadas)
+        $carrossel = $this->service->getCarrosselParaWidget($stationId);
+        if (!empty($carrossel)) {
+            $msg = $carrossel[0];
+            $msg["linha1"] = $this->service->processarVariaveis($msg["linha1"], $stationId, $programaNoAr, $nowPlaying);
+            $msg["linha2"] = $this->service->processarVariaveis($msg["linha2"], $stationId, $programaNoAr, $nowPlaying);
+            $estados[] = $msg;
+            $this->service->registarExibicao($stationId, $msg);
+            $this->service->registarExibicao($stationId, $msg);
+            $this->service->registarExibicao($stationId, $msg);
+        }
+        
+        return $response->withJson([
+            'success' => true,
+            'data' => [
+                'estados' => $estados,
+                'programa' => ['nome' => $programaNome, 'locutor' => $locutor, 'hora_inicio' => $horaInicio, 'hora_fim' => $horaFim, 'banner' => $banner, 'foto_locutor' => $fotoLocutor],
+                'musica' => $nowPlaying,
+                'carrossel_total' => count($carrossel),
+                'intervalo_segundos' => 8,
+            ],
+        ]);
+    }
+
+    private function getNowPlaying(int $stationId): array
+    {
+        try {
+            $url = "http://localhost/api/nowplaying/{$stationId}";
+            $context = stream_context_create(['http' => ['timeout' => 2]]);
+            $json = @file_get_contents($url, false, $context);
+            if ($json) {
+                $data = json_decode($json, true);
+                if (isset($data['now_playing']['song'])) {
+                    $song = $data['now_playing']['song'];
+                    return ['artista' => $song['artist'] ?? '', 'titulo' => $song['title'] ?? '', 'song' => trim(($song['artist'] ?? '') . ' - ' . ($song['title'] ?? ''), ' -'), 'album' => $song['album'] ?? '', 'art' => $song['art'] ?? ''];
+                }
+            }
+        } catch (\Exception $e) {}
+        return ['artista' => '', 'titulo' => '', 'song' => 'Radio New Band', 'album' => '', 'art' => ''];
+    }
+
+    public function programasAction(ServerRequest $request, Response $response, array $params): ResponseInterface
+    {
+        $response = $this->addCorsHeaders($response);
+        $stationId = (int) ($params['station_id'] ?? 0);
+        if ($stationId <= 0) { return $response->withJson(['success' => false, 'error' => 'ID da estacao invalido'], 400); }
+        $programas = $this->service->getProgramas($stationId);
+        $programasAtivos = array_filter($programas, fn($p) => !empty($p['ativo']));
+        $programasFormatados = array_map(fn($p) => ['id' => (int) $p['id'], 'nome' => $p['nome'], 'descricao' => $p['descricao'], 'banner' => $p['banner'], 'hora_inicio' => $p['hora_inicio'], 'hora_fim' => $p['hora_fim'], 'dias_semana' => json_decode($p['dias_semana'] ?? '[]', true), 'locutor_principal' => $p['locutor_principal'] ?? null], array_values($programasAtivos));
+        return $response->withJson(['success' => true, 'data' => $programasFormatados]);
+    }
+
+    public function programaAction(ServerRequest $request, Response $response, array $params): ResponseInterface
+    {
+        $response = $this->addCorsHeaders($response);
+        $stationId = (int) ($params['station_id'] ?? 0);
+        $programaId = (int) ($params['id'] ?? 0);
+        if ($stationId <= 0 || $programaId <= 0) { return $response->withJson(['success' => false, 'error' => 'Parametros invalidos'], 400); }
+        $programa = $this->service->getPrograma($programaId);
+        if (!$programa || (int) $programa['station_id'] !== $stationId) { return $response->withJson(['success' => false, 'error' => 'Programa nao encontrado'], 404); }
+        $locutores = $this->service->getLocutoresDoPrograma($programaId);
+        return $response->withJson(['success' => true, 'data' => ['id' => (int) $programa['id'], 'nome' => $programa['nome'], 'descricao' => $programa['descricao'], 'banner' => $programa['banner'], 'hora_inicio' => $programa['hora_inicio'], 'hora_fim' => $programa['hora_fim'], 'dias_semana' => json_decode($programa['dias_semana'] ?? '[]', true), 'ativo' => (bool) $programa['ativo'], 'locutores' => array_map(fn($l) => ['id' => (int) $l['id'], 'nome' => $l['nome'], 'foto' => $l['foto'], 'bio' => $l['bio'], 'is_principal' => (bool) $l['is_principal'], 'funcao' => $l['funcao']], $locutores)]]);
+    }
+
+    public function locutoresAction(ServerRequest $request, Response $response, array $params): ResponseInterface
+    {
+        $response = $this->addCorsHeaders($response);
+        $stationId = (int) ($params['station_id'] ?? 0);
+        if ($stationId <= 0) { return $response->withJson(['success' => false, 'error' => 'ID da estacao invalido'], 400); }
+        $locutores = $this->service->getLocutores($stationId);
+        $locutoresAtivos = array_filter($locutores, fn($l) => !empty($l['ativo']));
+        $locutoresFormatados = array_map(fn($l) => ['id' => (int) $l['id'], 'nome' => $l['nome'], 'foto' => $l['foto'], 'bio' => $l['bio'], 'instagram' => $l['instagram'], 'twitter' => $l['twitter'], 'facebook' => $l['facebook'], 'total_programas' => (int) ($l['total_programas'] ?? 0)], array_values($locutoresAtivos));
+        return $response->withJson(['success' => true, 'data' => $locutoresFormatados]);
+    }
+
+    public function gradeAction(ServerRequest $request, Response $response, array $params): ResponseInterface
+    {
+        $response = $this->addCorsHeaders($response);
+        $stationId = (int) ($params['station_id'] ?? 0);
+        if ($stationId <= 0) { return $response->withJson(['success' => false, 'error' => 'ID da estacao invalido'], 400); }
+        $grade = $this->service->getGradeSemanal($stationId);
+        $gradeFormatada = [];
+        foreach ($grade as $dia => $programas) {
+            $gradeFormatada[$dia] = array_map(fn($p) => ['id' => (int) $p['id'], 'nome' => $p['nome'], 'descricao' => $p['descricao'], 'banner' => $p['banner'], 'hora_inicio' => $p['hora_inicio'], 'hora_fim' => $p['hora_fim'], 'locutores' => $p['locutores'] ?? ''], $programas);
+        }
+        return $response->withJson(['success' => true, 'data' => $gradeFormatada]);
+    }
+}

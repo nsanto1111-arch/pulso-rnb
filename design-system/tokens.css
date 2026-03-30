@@ -1,0 +1,123 @@
+/**
+ * PULSO DESIGN SYSTEM
+ * Design by Claude - Inspired by Luanda's soul
+ * 
+ * Paleta: Oceano Atlântico + Pôr-do-sol + Energia de Kizomba
+ */
+
+:root {
+    /* === CORES PRIMÁRIAS (Oceano de Luanda) === */
+    --ocean-deep: #0A2540;      /* Azul profundo do Atlântico */
+    --ocean-medium: #1E4976;    /* Águas ao meio-dia */
+    --ocean-light: #3B82C8;     /* Reflexos do sol na água */
+    --ocean-mist: #E8F3FF;      /* Névoa matinal */
+    
+    /* === CORES ACENTO (Pôr-do-sol) === */
+    --sunset-fire: #E63946;     /* Vermelho intenso */
+    --sunset-gold: #F77F00;     /* Laranja ardente */
+    --sunset-amber: #FCBF49;    /* Dourado quente */
+    
+    /* === CORES NEUTRAS (Urbano + Elegante) === */
+    --ink-900: #0D1117;         /* Quase preto */
+    --ink-800: #161B22;         /* Fundo escuro */
+    --ink-700: #21262D;         /* Cards escuros */
+    --ink-600: #30363D;         /* Borders */
+    --ink-500: #484F58;         /* Text secondary */
+    --ink-400: #6E7681;         /* Text muted */
+    --ink-300: #8B949E;         /* Placeholder */
+    --ink-200: #C9D1D9;         /* Text primary */
+    --ink-100: #E6EDF3;         /* Text bright */
+    --ink-50: #F6F8FA;          /* Backgrounds light */
+    
+    /* === CORES SEMÂNTICAS === */
+    --success: #2EA043;         /* Verde natural */
+    --warning: #D29922;         /* Ouro antigo */
+    --error: #DA3633;           /* Vermelho forte */
+    --info: --ocean-light;
+    
+    /* === TIPOGRAFIA === */
+    --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    
+    /* Escala modular (1.250 - Major Third) */
+    --text-xs: 0.64rem;    /* 10.24px */
+    --text-sm: 0.8rem;     /* 12.8px */
+    --text-base: 1rem;     /* 16px */
+    --text-lg: 1.25rem;    /* 20px */
+    --text-xl: 1.563rem;   /* 25px */
+    --text-2xl: 1.953rem;  /* 31.25px */
+    --text-3xl: 2.441rem;  /* 39px */
+    --text-4xl: 3.052rem;  /* 48.8px */
+    --text-5xl: 3.815rem;  /* 61px */
+    
+    /* === ESPAÇAMENTO (Grid 4px) === */
+    --space-1: 0.25rem;   /* 4px */
+    --space-2: 0.5rem;    /* 8px */
+    --space-3: 0.75rem;   /* 12px */
+    --space-4: 1rem;      /* 16px */
+    --space-6: 1.5rem;    /* 24px */
+    --space-8: 2rem;      /* 32px */
+    --space-12: 3rem;     /* 48px */
+    --space-16: 4rem;     /* 64px */
+    --space-24: 6rem;     /* 96px */
+    
+    /* === RAIOS (Progressão orgânica) === */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-full: 9999px;
+    
+    /* === SOMBRAS (Profundidade natural) === */
+    --shadow-sm: 0 1px 2px 0 rgba(10, 37, 64, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(10, 37, 64, 0.1), 
+                 0 2px 4px -1px rgba(10, 37, 64, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(10, 37, 64, 0.15), 
+                 0 4px 6px -2px rgba(10, 37, 64, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(10, 37, 64, 0.2), 
+                 0 10px 10px -5px rgba(10, 37, 64, 0.04);
+    
+    /* === TRANSIÇÕES (Suaves mas rápidas) === */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* === Z-INDEX (Hierarquia clara) === */
+    --z-base: 0;
+    --z-dropdown: 1000;
+    --z-sticky: 1100;
+    --z-fixed: 1200;
+    --z-modal-backdrop: 1300;
+    --z-modal: 1400;
+    --z-popover: 1500;
+    --z-tooltip: 1600;
+}
+
+/* Tema escuro (padrão) */
+body {
+    --bg-primary: var(--ink-900);
+    --bg-secondary: var(--ink-800);
+    --bg-tertiary: var(--ink-700);
+    --border-primary: var(--ink-600);
+    --text-primary: var(--ink-100);
+    --text-secondary: var(--ink-300);
+    --text-muted: var(--ink-400);
+}
+
+/* Reset e base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}

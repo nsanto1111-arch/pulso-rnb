@@ -1,0 +1,603 @@
+<?php
+declare(strict_types=1);
+
+namespace Plugin\ProgramacaoPlugin\Service;
+
+use Doctrine\DBAL\Connection;
+
+class PulsoService
+{
+    private Connection $db;
+    private string $timezone = 'Africa/Luanda';
+
+    public function __construct(Connection $db)
+    {
+        $this->db = $db;
+    }
+
+    // ==================== OUVINTES ====================
+
+    public function getOuvintes(int $stationId, ?string $segmento = null, ?string $busca = null): array
+    {
+        $sql = "SELECT * FROM plugin_pulso_ouvintes WHERE station_id = :station_id AND ativo = 1";
+        $params = ['station_id' => $stationId];
+
+        if ($segmento) {
+            $sql .= " AND segmento = :segmento";
+            $params['segmento'] = $segmento;
+        }
+
+        if ($busca) {
+            $sql .= " AND (nome LIKE :busca OR telefone LIKE :busca2 OR email LIKE :busca3)";
+            $params['busca'] = "%{$busca}%";
+            $params['busca2'] = "%{$busca}%";
+            $params['busca3'] = "%{$busca}%";
+        }
+
+        $sql .= " ORDER BY ultima_actividade DESC, data_registo DESC";
+
+        return $this->db->fetchAllAssociative($sql, $params);
+    }
+
+    public function getOuvinte(int $id): ?array
+    {
+        return $this->db->fetchAssociative(
+            "SELECT * FROM plugin_pulso_ouvintes WHERE id = :id",
+            ['id' => $id]
+        ) ?: null;
+    }
+
+    public function getOuvintePorTelefone(string $telefone): ?array
+    {
+        return $this->db->fetchAssociative(
+            "SELECT * FROM plugin_pulso_ouvintes WHERE telefone = :telefone",
+            ['telefone' => $telefone]
+        ) ?: null;
+    }
+
+    public function saveOuvinte(array $data): int
+    {
+        if (isset($data['id']) && $data['id']) {
+            $id = (int) $data['id'];
+            unset($data['id']);
+            $this->db->update('plugin_pulso_ouvintes', $data, ['id' => $id]);
+            return $id;
+        } else {
+            unset($data['id']);
+            $this->db->insert('plugin_pulso_ouvintes', $data);
+            return (int) $this->db->lastInsertId();
+        }
+    }
+
+    public function deleteOuvinte(int $id): void
+    {
+        $this->db->update('plugin_pulso_ouvintes', ['ativo' => 0], ['id' => $id]);
+    }
+
+    public function actualizarActividade(int $ouvinteId): void
+    {
+        $this->db->update('plugin_pulso_ouvintes', [
+            'ultima_actividade' => date('Y-m-d H:i:s')
+        ], ['id' => $ouvinteId]);
+    }
+
+    public function actualizarSegmento(int $ouvinteId): void
+    {
+        $ouvinte = $this->getOuvinte($ouvinteId);
+        if (!$ouvinte) return;
+
+        $diasRegisto = (int) ((time() - strtotime($ouvinte['data_registo'])) / 86400);
+        $participacoes = (int) $ouvinte['total_participacoes'];
+
+        $segmento = 'novo';
+        if ($diasRegisto > 365 && $participacoes > 50) {
+            $segmento = 'embaixador';
+        } elseif ($diasRegisto > 180 && $participacoes > 20) {
+            $segmento = 'veterano';
+        } elseif ($diasRegisto > 30 && $participacoes > 5) {
+            $segmento = 'regular';
+        }
+
+        // Verificar inactividade
+        if ($ouvinte['ultima_actividade']) {
+            $diasInactivo = (int) ((time() - strtotime($ouvinte['ultima_actividade'])) / 86400);
+            if ($diasInactivo > 30) {
+                $segmento = 'inactivo';
+            }
+        }
+
+        $this->db->update('plugin_pulso_ouvintes', ['segmento' => $segmento], ['id' => $ouvinteId]);
+    }
+
+    // ==================== PARTICIPAÇÕES ====================
+
+    public function registarParticipacao(int $ouvinteId, string $tipo, array $dados = []): int
+    {
+        $participacao = [
+            'station_id' => $dados['station_id'] ?? 1,
+            'ouvinte_id' => $ouvinteId,
+            'tipo' => $tipo,
+            'descricao' => $dados['descricao'] ?? null,
+            'promocao_id' => $dados['promocao_id'] ?? null,
+            'ganhou' => $dados['ganhou'] ?? 0,
+            'premio' => $dados['premio'] ?? null,
+            'pontos_ganhos' => $dados['pontos_ganhos'] ?? $this->calcularPontos($tipo),
+            'lido_no_ar' => $dados['lido_no_ar'] ?? 0,
+            'data_participacao' => date('Y-m-d H:i:s'),
+        ];
+
+        $this->db->insert('plugin_pulso_participacoes', $participacao);
+        $participacaoId = (int) $this->db->lastInsertId();
+
+        // Actualizar contadores do ouvinte
+        $this->db->executeStatement(
+            "UPDATE plugin_pulso_ouvintes SET 
+                total_participacoes = total_participacoes + 1,
+                pontos = pontos + :pontos,
+                ultima_actividade = NOW()
+             WHERE id = :id",
+            ['pontos' => $participacao['pontos_ganhos'], 'id' => $ouvinteId]
+        );
+
+        // Actualizar segmento
+        $this->actualizarSegmento($ouvinteId);
+
+        return $participacaoId;
+    }
+
+    public function getParticipacoes(int $ouvinteId, int $limit = 20): array
+    {
+        return $this->db->fetchAllAssociative(
+            "SELECT * FROM plugin_pulso_participacoes WHERE ouvinte_id = :ouvinte_id ORDER BY data_participacao DESC LIMIT 50",
+            ['ouvinte_id' => $ouvinteId]
+        );
+    }
+
+    private function calcularPontos(string $tipo): int
+    {
+        $pontos = [
+            'mensagem' => 5,
+            'pedido_musica' => 10,
+            'promocao' => 15,
+            'votacao' => 5,
+            'ligacao' => 20,
+            'sms' => 10,
+            'whatsapp' => 10,
+            'app' => 5,
+        ];
+        return $pontos[$tipo] ?? 5;
+    }
+
+    // ==================== PROMOÇÕES ====================
+
+    public function getPromocoes(int $stationId, ?string $estado = null): array
+    {
+        $sql = "SELECT * FROM plugin_pulso_promocoes WHERE station_id = :station_id";
+        $params = ['station_id' => $stationId];
+
+        if ($estado) {
+            $sql .= " AND estado = :estado";
+            $params['estado'] = $estado;
+        }
+
+        $sql .= " ORDER BY data_inicio DESC";
+
+        return $this->db->fetchAllAssociative($sql, $params);
+    }
+
+    public function getPromocao(int $id): ?array
+    {
+        return $this->db->fetchAssociative(
+            "SELECT * FROM plugin_pulso_promocoes WHERE id = :id",
+            ['id' => $id]
+        ) ?: null;
+    }
+
+    public function getPromocoesActivas(int $stationId): array
+    {
+        return $this->db->fetchAllAssociative(
+            "SELECT * FROM plugin_pulso_promocoes 
+             WHERE station_id = :station_id 
+             AND estado = 'activa' 
+             AND NOW() BETWEEN data_inicio AND data_fim
+             ORDER BY data_fim ASC",
+            ['station_id' => $stationId]
+        );
+    }
+
+    public function savePromocao(array $data): int
+    {
+        if (isset($data['id']) && $data['id']) {
+            $id = (int) $data['id'];
+            unset($data['id']);
+            $data['updated_at'] = date('Y-m-d H:i:s');
+            $this->db->update('plugin_pulso_promocoes', $data, ['id' => $id]);
+            return $id;
+        } else {
+            unset($data['id']);
+            $this->db->insert('plugin_pulso_promocoes', $data);
+            return (int) $this->db->lastInsertId();
+        }
+    }
+
+    public function deletePromocao(int $id): void
+    {
+        $this->db->delete('plugin_pulso_promocoes', ['id' => $id]);
+    }
+
+    // ==================== ESTATÍSTICAS ====================
+
+    public function getEstatisticasGerais(int $stationId): array
+    {
+        $totalOuvintes = (int) $this->db->fetchOne(
+            "SELECT COUNT(*) FROM plugin_pulso_ouvintes WHERE station_id = :station_id AND ativo = 1",
+            ['station_id' => $stationId]
+        );
+
+        $novosEsteMes = (int) $this->db->fetchOne(
+            "SELECT COUNT(*) FROM plugin_pulso_ouvintes 
+             WHERE station_id = :station_id AND ativo = 1 
+             AND MONTH(data_registo) = MONTH(NOW()) AND YEAR(data_registo) = YEAR(NOW())",
+            ['station_id' => $stationId]
+        );
+
+        $participacoesHoje = (int) $this->db->fetchOne(
+            "SELECT COUNT(*) FROM plugin_pulso_participacoes p
+             JOIN plugin_pulso_ouvintes o ON p.ouvinte_id = o.id
+             WHERE o.station_id = :station_id AND DATE(p.data_participacao) = CURDATE()",
+            ['station_id' => $stationId]
+        );
+
+        $porSegmento = $this->db->fetchAllAssociative(
+            "SELECT segmento, COUNT(*) as total FROM plugin_pulso_ouvintes 
+             WHERE station_id = :station_id AND ativo = 1 
+             GROUP BY segmento ORDER BY total DESC",
+            ['station_id' => $stationId]
+        );
+
+        $topOuvintes = $this->db->fetchAllAssociative(
+            "SELECT id, nome, pontos, total_participacoes, segmento 
+             FROM plugin_pulso_ouvintes 
+             WHERE station_id = :station_id AND ativo = 1 
+             ORDER BY pontos DESC LIMIT 10",
+            ['station_id' => $stationId]
+        );
+
+        $emRisco = (int) $this->db->fetchOne(
+            "SELECT COUNT(*) FROM plugin_pulso_ouvintes 
+             WHERE station_id = :station_id AND ativo = 1 
+             AND (segmento = 'inactivo' OR risco_abandono = 'alto')",
+            ['station_id' => $stationId]
+        );
+
+        return [
+            'total_ouvintes' => $totalOuvintes,
+            'novos_este_mes' => $novosEsteMes,
+            'participacoes_hoje' => $participacoesHoje,
+            'por_segmento' => $porSegmento,
+            'top_ouvintes' => $topOuvintes,
+            'em_risco' => $emRisco,
+        ];
+    }
+
+    // ==================== FICHA DO OUVINTE ====================
+
+    public function getFichaCompleta(int $ouvinteId): array
+    {
+        $ouvinte = $this->getOuvinte($ouvinteId);
+        if (!$ouvinte) return [];
+
+        $participacoes = $this->getParticipacoes($ouvinteId, 50);
+
+        $ultimaVitoria = $this->db->fetchAssociative(
+            "SELECT * FROM plugin_pulso_participacoes 
+             WHERE ouvinte_id = :ouvinte_id AND ganhou = 1 
+             ORDER BY data_participacao DESC LIMIT 1",
+            ['ouvinte_id' => $ouvinteId]
+        );
+
+        $diasSemGanhar = 0;
+        if ($ultimaVitoria) {
+            $diasSemGanhar = (int) ((time() - strtotime($ultimaVitoria['data_participacao'])) / 86400);
+        } else {
+            $diasSemGanhar = (int) ((time() - strtotime($ouvinte['data_registo'])) / 86400);
+        }
+
+        return [
+            'ouvinte' => $ouvinte,
+            'participacoes' => $participacoes,
+            'ultima_vitoria' => $ultimaVitoria,
+            'dias_sem_ganhar' => $diasSemGanhar,
+            'dias_como_ouvinte' => (int) ((time() - strtotime($ouvinte['data_registo'])) / 86400),
+        ];
+    }
+
+    // ==================== WEBHOOK / INTEGRAÇÃO WORDPRESS ====================
+
+    /**
+     * Processa webhook do WordPress (Pro Radio Dedications)
+     * Deduplicação: email > telefone > nome+IP > nome
+     */
+    public function processarDedicatoriaWebhook(array $dados, int $stationId = 1): array
+    {
+        $nome = trim($dados['nome'] ?? 'Ouvinte Anonimo');
+        $email = !empty($dados['email']) ? strtolower(trim($dados['email'])) : null;
+        $telefone = !empty($dados['telefone']) ? $this->normalizarTelefone($dados['telefone']) : null;
+        $ip = $dados['ip'] ?? null;
+        $musica = $dados['musica'] ?? null;
+        $mensagem = $dados['mensagem'] ?? null;
+        $wpPostId = $dados['wp_post_id'] ?? null;
+
+        // Verificar duplicata por wp_post_id
+        if ($wpPostId) {
+            $existe = $this->db->fetchAssociative(
+                "SELECT id FROM plugin_pulso_participacoes WHERE descricao LIKE :ref",
+                ['ref' => "%wp_post_id:{$wpPostId}%"]
+            );
+            if ($existe) {
+                return [
+                    'status' => 'duplicado',
+                    'mensagem' => "Dedicatoria WP #{$wpPostId} ja processada",
+                    'participacao_id' => (int) $existe['id'],
+                ];
+            }
+        }
+
+        // Encontrar ou criar ouvinte
+        $ouvinte = null;
+        $isNovo = false;
+
+        // 1. Por email
+        if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $ouvinte = $this->db->fetchAssociative(
+                "SELECT * FROM plugin_pulso_ouvintes WHERE email = :email AND station_id = :sid AND ativo = 1",
+                ['email' => $email, 'sid' => $stationId]
+            );
+        }
+
+        // 2. Por telefone
+        if (!$ouvinte && $telefone) {
+            $ouvinte = $this->db->fetchAssociative(
+                "SELECT * FROM plugin_pulso_ouvintes WHERE telefone = :tel AND station_id = :sid AND ativo = 1",
+                ['tel' => $telefone, 'sid' => $stationId]
+            );
+        }
+
+        // 3. Por nome + IP
+        if (!$ouvinte && $nome && $ip) {
+            $ouvinte = $this->db->fetchAssociative(
+                "SELECT * FROM plugin_pulso_ouvintes WHERE LOWER(nome) = LOWER(:nome) AND ultimo_ip = :ip AND station_id = :sid AND ativo = 1",
+                ['nome' => $nome, 'ip' => $ip, 'sid' => $stationId]
+            );
+        }
+
+        // 4. Por nome exacto
+        if (!$ouvinte && $nome && $nome !== 'Ouvinte Anonimo') {
+            $ouvinte = $this->db->fetchAssociative(
+                "SELECT * FROM plugin_pulso_ouvintes WHERE LOWER(nome) = LOWER(:nome) AND station_id = :sid AND ativo = 1 LIMIT 1",
+                ['nome' => $nome, 'sid' => $stationId]
+            );
+        }
+
+        // 5. Criar novo
+        if (!$ouvinte) {
+            $isNovo = true;
+            $novoId = $this->saveOuvinte([
+                'station_id' => $stationId,
+                'nome' => $nome,
+                'email' => $email,
+                'telefone' => $telefone,
+                'cidade' => $dados['cidade'] ?? 'Luanda',
+                'ultimo_ip' => $ip,
+                'segmento' => 'novo',
+            ]);
+            $ouvinte = $this->getOuvinte($novoId);
+        } else {
+            // Actualizar dados que faltavam
+            $updates = ['ultima_actividade' => date('Y-m-d H:i:s')];
+            if ($ip) $updates['ultimo_ip'] = $ip;
+            if ($email && empty($ouvinte['email'])) $updates['email'] = $email;
+            if ($telefone && empty($ouvinte['telefone'])) $updates['telefone'] = $telefone;
+            $this->db->update('plugin_pulso_ouvintes', $updates, ['id' => $ouvinte['id']]);
+        }
+
+        $ouvinteId = (int) $ouvinte['id'];
+
+        // Registar participacao
+        $descricao = $musica ? "Dedicatoria: {$musica}" : "Dedicatoria musical";
+        if ($wpPostId) {
+            $descricao .= " [wp_post_id:{$wpPostId}]";
+        }
+        if ($mensagem) {
+            $descricao .= " | Msg: " . mb_substr($mensagem, 0, 200);
+        }
+
+        $participacaoId = $this->registarParticipacao($ouvinteId, 'pedido_musica', [
+            'station_id' => $stationId,
+            'descricao' => $descricao,
+            'pontos_ganhos' => $isNovo ? 30 : 10,
+        ]);
+
+        return [
+            'status' => 'ok',
+            'ouvinte_id' => $ouvinteId,
+            'is_novo' => $isNovo,
+            'pontos_ganhos' => $isNovo ? 30 : 10,
+            'participacao_id' => $participacaoId,
+            'nome' => $ouvinte['nome'],
+            'pontos_total' => (int) ($ouvinte['pontos'] ?? 0) + ($isNovo ? 30 : 10),
+        ];
+    }
+
+    /**
+     * Normalizar telefone angolano
+     */
+    private function normalizarTelefone(string $telefone): string
+    {
+        $tel = preg_replace('/[^\d+]/', '', $telefone);
+        if (str_starts_with($tel, '00')) {
+            $tel = '+' . substr($tel, 2);
+        }
+        if (preg_match('/^9\d{8}$/', $tel)) {
+            $tel = '+244' . $tel;
+        }
+        return $tel;
+    }
+
+    /**
+     * Estatisticas do webhook (para debug)
+     */
+    public function getWebhookStats(): array
+    {
+        $totalProcessadas = (int) $this->db->fetchOne(
+            "SELECT COUNT(*) FROM plugin_pulso_participacoes WHERE descricao LIKE '%wp_post_id:%'"
+        );
+        $ultimaProcessada = $this->db->fetchAssociative(
+            "SELECT p.*, o.nome FROM plugin_pulso_participacoes p JOIN plugin_pulso_ouvintes o ON p.ouvinte_id = o.id WHERE p.descricao LIKE '%wp_post_id:%' ORDER BY p.data_participacao DESC LIMIT 1"
+        );
+        return [
+            'total_processadas' => $totalProcessadas,
+            'ultima' => $ultimaProcessada,
+        ];
+    }
+
+    // ==================== RANKING ====================
+
+    public function getRankingSemanal(int $stationId): array
+    {
+        // Data de início da semana (segunda-feira)
+        $inicioSemana = date('Y-m-d', strtotime('monday this week'));
+        
+        // Ranking semanal
+        $ranking = $this->db->fetchAllAssociative(
+            "SELECT 
+                o.id,
+                o.nome,
+                o.pontos,
+                o.segmento,
+                COALESCE(COUNT(p.id), 0) as participacoes_semana,
+                COALESCE(SUM(CASE WHEN p.lido_no_ar = 1 THEN 1 ELSE 0 END), 0) as lidas_semana,
+                COALESCE(SUM(CASE WHEN p.ganhou = 1 THEN 1 ELSE 0 END), 0) as vitorias_semana
+            FROM plugin_pulso_ouvintes o
+            LEFT JOIN plugin_pulso_participacoes p ON p.ouvinte_id = o.id 
+                AND p.data_participacao >= :inicio_semana
+            WHERE o.station_id = :station_id AND o.ativo = 1
+            GROUP BY o.id
+            ORDER BY participacoes_semana DESC, o.pontos DESC
+            LIMIT 20",
+            ['station_id' => $stationId, 'inicio_semana' => $inicioSemana]
+        );
+
+        return [
+            'ranking' => $ranking,
+            'inicio_semana' => $inicioSemana,
+            'periodo' => date('d/m/Y', strtotime($inicioSemana)) . ' - ' . date('d/m/Y')
+        ];
+    }
+
+
+    // ==================== BADGES ====================
+
+    public function verificarBadges(int $ouvinteId): array
+    {
+        $ouvinte = $this->getOuvinte($ouvinteId);
+        if (!$ouvinte) return [];
+        $badgesAtribuidos = [];
+        
+        if ($ouvinte['total_participacoes'] == 1) {
+            if ($this->atribuirBadge($ouvinteId, 'estreia', 'Estreia', 'Bem-vindo! Sua primeira participação', '⭐')) {
+                $badgesAtribuidos[] = 'estreia';
+            }
+        }
+        
+        $temMadrugada = (int) $this->db->fetchOne("SELECT COUNT(*) FROM plugin_pulso_participacoes WHERE ouvinte_id = :oid AND HOUR(data_participacao) BETWEEN 0 AND 5", ['oid' => $ouvinteId]);
+        if ($temMadrugada > 0) {
+            if ($this->atribuirBadge($ouvinteId, 'madrugador', 'Madrugador', 'Participou de madrugada', '🎧')) {
+                $badgesAtribuidos[] = 'madrugador';
+            }
+        }
+        
+        $diasRegisto = (int) ((time() - strtotime($ouvinte['data_registo'])) / 86400);
+        if ($diasRegisto >= 365) {
+            if ($this->atribuirBadge($ouvinteId, 'veterano', 'Veterano', 'Mais de 1 ano como ouvinte', '🏆')) {
+                $badgesAtribuidos[] = 'veterano';
+            }
+        }
+        
+        $diasUnicos = (int) $this->db->fetchOne("SELECT COUNT(DISTINCT DATE(data_participacao)) FROM plugin_pulso_participacoes WHERE ouvinte_id = :oid AND data_participacao >= DATE_SUB(NOW(), INTERVAL 7 DAY)", ['oid' => $ouvinteId]);
+        if ($diasUnicos >= 7) {
+            if ($this->atribuirBadge($ouvinteId, 'semana_perfeita', 'Semana Perfeita', 'Participou todos os dias na semana', '🔥')) {
+                $badgesAtribuidos[] = 'semana_perfeita';
+            }
+        }
+        
+        $pedidosMusica = (int) $this->db->fetchOne("SELECT COUNT(*) FROM plugin_pulso_participacoes WHERE ouvinte_id = :oid AND tipo = 'pedido_musica'", ['oid' => $ouvinteId]);
+        if ($pedidosMusica >= 50) {
+            if ($this->atribuirBadge($ouvinteId, 'melomano', 'Melómano', 'Mais de 50 pedidos musicais', '🎵')) {
+                $badgesAtribuidos[] = 'melomano';
+            }
+        }
+        
+        if ($ouvinte['segmento'] === 'embaixador') {
+            if ($this->atribuirBadge($ouvinteId, 'embaixador', 'Embaixador', 'Ouvinte VIP da rádio', '👑')) {
+                $badgesAtribuidos[] = 'embaixador';
+            }
+        }
+        
+        if ($ouvinte['total_participacoes'] >= 100) {
+            if ($this->atribuirBadge($ouvinteId, 'fiel', 'Fiel', 'Mais de 100 participações', '💎')) {
+                $badgesAtribuidos[] = 'fiel';
+            }
+        }
+        
+        if ($ouvinte['total_vitorias'] >= 3) {
+            if ($this->atribuirBadge($ouvinteId, 'sortudo', 'Sortudo', 'Ganhou 3+ sorteios', '🎯')) {
+                $badgesAtribuidos[] = 'sortudo';
+            }
+        }
+        
+        $dedicatoriasLidas = (int) $this->db->fetchOne("SELECT COUNT(*) FROM plugin_pulso_participacoes WHERE ouvinte_id = :oid AND lido_no_ar = 1", ['oid' => $ouvinteId]);
+        if ($dedicatoriasLidas >= 20) {
+            if ($this->atribuirBadge($ouvinteId, 'dedicado', 'Dedicado', '20+ dedicatórias lidas no ar', '❤️')) {
+                $badgesAtribuidos[] = 'dedicado';
+            }
+        }
+        
+        return $badgesAtribuidos;
+    }
+
+    private function atribuirBadge(int $ouvinteId, string $codigo, string $nome, string $descricao, string $icone): bool
+    {
+        $ouvinte = $this->getOuvinte($ouvinteId);
+        if (!$ouvinte) return false;
+        
+        try {
+            $this->db->insert('plugin_pulso_badges', [
+                'station_id' => $ouvinte['station_id'],
+                'ouvinte_id' => $ouvinteId,
+                'codigo' => $codigo,
+                'nome' => $nome,
+                'descricao' => $descricao,
+                'icone' => $icone,
+                'data_conquista' => date('Y-m-d H:i:s'),
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    public function getBadgesOuvinte(int $ouvinteId): array
+    {
+        return $this->db->fetchAllAssociative("SELECT * FROM plugin_pulso_badges WHERE ouvinte_id = :oid ORDER BY data_conquista DESC", ['oid' => $ouvinteId]);
+    }
+
+    public function getEstatisticasBadges(int $stationId): array
+    {
+        return [
+            'total_badges_atribuidos' => (int) $this->db->fetchOne("SELECT COUNT(*) FROM plugin_pulso_badges WHERE station_id = :sid", ['sid' => $stationId]),
+            'ouvintes_com_badges' => (int) $this->db->fetchOne("SELECT COUNT(DISTINCT ouvinte_id) FROM plugin_pulso_badges JOIN plugin_pulso_ouvintes o ON o.id = plugin_pulso_badges.ouvinte_id WHERE o.station_id = :sid", ['sid' => $stationId]),
+            'badges_por_tipo' => $this->db->fetchAllAssociative("SELECT codigo, icone, nome, COUNT(*) as total FROM plugin_pulso_badges b JOIN plugin_pulso_ouvintes o ON o.id = b.ouvinte_id WHERE o.station_id = :sid GROUP BY codigo, icone, nome ORDER BY total DESC", ['sid' => $stationId]),
+        ];
+    }
+}
