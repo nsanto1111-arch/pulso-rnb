@@ -974,13 +974,13 @@ window.pqaToggle = function() {
 
 function pqaLoad() {
     fetch('/api/nowplaying/rnb').then(r=>r.json()).then(d => {
-        const np = d.now_playing || {}, song = np.song || {};
-        document.getElementById('pqa-song').textContent   = song.title  || '—';
-        document.getElementById('pqa-artist').textContent = song.artist || '';
-        document.getElementById('pqa-cnt').textContent    = (d.listeners||{}).total || 0;
+        const np = d.now_playing  ||  {}, song = np.song  ||  {};
+        document.getElementById('pqa-song').textContent   = song.title   ||  '—';
+        document.getElementById('pqa-artist').textContent = song.artist  ||  '';
+        document.getElementById('pqa-cnt').textContent    = (d.listeners || {}).total  ||  0;
         const artEl = document.getElementById('pqa-art');
         artEl.innerHTML = song.art ? '<img src="'+song.art+'">' : '🎵';
-        elapsed = np.elapsed||0; duracao = np.duration||0;
+        elapsed = np.elapsed || 0; duracao = np.duration || 0;
         if(timer) clearInterval(timer);
         timer = setInterval(function(){
             elapsed++;
@@ -993,19 +993,19 @@ function pqaLoad() {
     fetch('/pulso/api/locutor?action=aniversariantes&station_id='+SID).then(r=>r.json()).then(d => {
         var sec = document.getElementById('pqa-aniv-section');
         var list = document.getElementById('pqa-aniv-list');
-        var anivs = (d.aniversariantes||[]);
+        var anivs = (d.aniversariantes || []);
         if(anivs.length > 0) {
             sec.style.display = 'block';
             list.innerHTML = anivs.map(function(a) {
-                var ini = (a.nome||'?')[0].toUpperCase();
-                return '<div class="pqa-aniv-item"><div class="pqa-aniv-avatar">'+ini+'</div><div><div style="font-size:12px;font-weight:700;color:#fff">'+a.nome+'</div><div style="font-size:10px;color:#71717a">🎂 '+(a.idade||'')+' anos hoje</div></div></div>';
+                var ini = (a.nome || '?')[0].toUpperCase();
+                return '<div class="pqa-aniv-item"><div class="pqa-aniv-avatar">'+ini+'</div><div><div style="font-size:12px;font-weight:700;color:#fff">'+a.nome+'</div><div style="font-size:10px;color:#71717a">🎂 '+(a.idade || '')+' anos hoje</div></div></div>';
             }).join('');
             setBadge(anivs.length);
         } else { sec.style.display='none'; }
     }).catch(function(){});
 
     fetch('/pulso/api/locutor?action=notificacoes&station_id='+SID).then(r=>r.json()).then(d => {
-        var notifs = (d.notificacoes||[]).filter(function(n){return !n.lida;}).slice(0,3);
+        var notifs = (d.notificacoes || []).filter(function(n){return !n.lida;}).slice(0,3);
         var sec  = document.getElementById('pqa-notif-section');
         var list = document.getElementById('pqa-notif-list');
         if(notifs.length > 0) {
@@ -1026,7 +1026,7 @@ function setBadge(n) {
 setInterval(function(){ if(open) pqaLoad(); }, 15000);
 setTimeout(function(){
     fetch('/pulso/api/locutor?action=notificacoes&station_id='+SID).then(r=>r.json()).then(d=>{
-        var n = (d.notificacoes||[]).filter(function(x){return !x.lida;}).length;
+        var n = (d.notificacoes || []).filter(function(x){return !x.lida;}).length;
         if(n>0) setBadge(n);
     }).catch(function(){});
 }, 2000);
@@ -1361,7 +1361,7 @@ HTML;
             foreach ($items as $item) {
                 $isExact = ($item['url'] === "/public/financas/{$stationId}");
                 $active  = $isExact
-                    ? ($currentUrl === $item['url'] || $currentUrl === $item['url'] . '/')
+                    ? ($currentUrl === $item['url']  ||  $currentUrl === $item['url'] . '/')
                     : str_starts_with($currentUrl, $item['url']);
                 $ac  = $active ? ' fpn-active' : '';
                 $dot = $active ? '<span class="fpn-dot"></span>' : '';
@@ -2003,7 +2003,7 @@ document.querySelectorAll('.fp-modal-bg').forEach(m=>{
     const close = document.getElementById('fp-alert-close');
     const dot   = document.getElementById('fp-bell-dot');
 
-    if (!FP_ALERTAS || FP_ALERTAS.length === 0) {
+    if (!FP_ALERTAS  ||  FP_ALERTAS.length === 0) {
         dot.style.display = 'none';
         body.innerHTML = '<div class="fp-alert-empty">✅ Sem alertas activos</div>';
     } else {
