@@ -1,0 +1,73 @@
+// Adicionar ao PulsoController:
+
+public function metricsAction(ServerRequest $request, Response $response): ResponseInterface
+{
+    $stationId = $request->getAttribute('station_id');
+    
+    $metrics = [
+        'listeners_today' => $this->getListenersToday($stationId),
+        'engagement_rate' => $this->getEngagementRate($stationId),
+        'avg_session' => $this->getAverageSession($stationId),
+        'active_now' => $this->getActiveListeners($stationId),
+        'trend_listeners' => 12.5,
+        'trend_engagement' => 8.3,
+        'trend_session' => 2,
+        'top_songs' => $this->getTopSongs($stationId, 5),
+        'demographic' => $this->getDemographic($stationId),
+        'devices' => $this->getDeviceStats($stationId),
+        'activity_feed' => $this->getActivityFeed($stationId, 10)
+    ];
+    
+    return $response
+        ->withHeader('Content-Type', 'application/json')
+        ->withStatus(200)
+        ->write(json_encode(['sucesso' => true, 'dados' => $metrics]));
+}
+
+private function getListenersToday($stationId): int
+{
+    // Query DB
+    return 1250;
+}
+
+private function getEngagementRate($stationId): float
+{
+    // Calculate engagement
+    return 78.5;
+}
+
+private function getAverageSession($stationId): int
+{
+    // Calculate average session
+    return 45;
+}
+
+private function getActiveListeners($stationId): int
+{
+    // Get current active listeners
+    return 248;
+}
+
+private function getTopSongs($stationId, $limit): array
+{
+    // Get top songs
+    return [];
+}
+
+private function getDemographic($stationId): array
+{
+    // Get demographic data
+    return [];
+}
+
+private function getDeviceStats($stationId): array
+{
+    // Get device statistics
+    return [];
+}
+
+private function getActivityFeed($stationId, $limit): array
+{
+    // Get activity feed
+    return [];
+}

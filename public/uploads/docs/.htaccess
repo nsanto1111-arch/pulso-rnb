@@ -1,0 +1,3 @@
+# Bloquear acesso directo — servir só via PHP
+Order Deny,Allow
+Deny from all

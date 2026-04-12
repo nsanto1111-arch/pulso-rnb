@@ -3,6 +3,11 @@
     "require": {
         "mpdf/mpdf": "^8.2"
     },
+    "autoload": {
+        "psr-4": {
+            "Plugin\\ProgramacaoPlugin\\": "src/"
+        }
+    },
     "config": {
         "vendor-dir": "vendor-plugin"
     }

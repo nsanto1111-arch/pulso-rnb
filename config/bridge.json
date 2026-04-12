@@ -1,0 +1,7 @@
+{
+    "url":     "http://100.65.58.5:8765",
+    "token":   "rnb_bridge_2026_seguro",
+    "version": "1.2",
+    "myriad":  "ON-AIR\\SQLExpress",
+    "bd":      "DatabaseNewBand"
+}

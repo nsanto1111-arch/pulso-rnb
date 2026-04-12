@@ -90,6 +90,9 @@ return function (\App\CallableEventDispatcher $dispatcher): void {
             $app->post('/public/programacao/{station_id}/carrossel/{id}/excluir', \Plugin\ProgramacaoPlugin\Controller\ProgramacaoAdminController::class . ':carrosselDeleteAction');
             $app->get('/public/programacao/{station_id}/carrossel/{id}/toggle', \Plugin\ProgramacaoPlugin\Controller\ProgramacaoAdminController::class . ':carrosselToggleAction');
 
+            // ========== API WIDGET PLAYER ==========
+            $app->get("/api/station/{station_id}/programacao/widget", \Plugin\ProgramacaoPlugin\Controller\ProgramacaoApiController::class . ":widgetAction");
+            $app->get("/pulso/widget", \Plugin\ProgramacaoPlugin\Controller\ProgramacaoApiController::class . ":widgetDefaultAction");
             // ========== API PÚBLICA ==========
 
             // ========== PULSO - INTELIGÊNCIA DE AUDIÊNCIA ==========
@@ -129,7 +132,154 @@ return function (\App\CallableEventDispatcher $dispatcher): void {
             $app->get('/public/financas/{station_id}/relatorios-fp', \Plugin\ProgramacaoPlugin\Controller\PulsoController::class . ':fpRelatoriosAction');
             $app->get('/public/financas/{station_id}/centros-custo', \Plugin\ProgramacaoPlugin\Controller\PulsoController::class . ':fpCentrosCustoAction');
             // ─── RNB RH ──────────────────────────────────────────
-            $app->get('/public/rh/{station_id}', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':indexAction');
+            
+            
+            
+            
+            
+            
+        
+    // DEBUG: Testar login do portal
+    $app->map(['GET', 'POST'], '/public/portal/debug', function (
+        ServerRequest $request,
+        Response $response
+    ) use ($di) {
+        $db = $di->get(Doctrine\DBAL\Connection::class);
+        
+        ob_start();
+        echo "<h1>Debug Portal Login</h1>";
+        echo "<style>body{font-family:monospace;background:#1a1a1a;color:#0f0;padding:2rem}h1{color:#ff0}pre{background:#000;padding:1rem;border:1px solid #0f0}input,button{padding:0.5rem;margin:0.5rem 0;font-size:14px}</style>";
+        
+        if ($request->getMethod() === 'POST') {
+            $post = $request->getParsedBody();
+            echo "<h2>POST RECEBIDO</h2>";
+            echo "<pre>Username: " . ($post['username'] ?? 'VAZIO') . "</pre>";
+            echo "<pre>Password: " . (isset($post['password']) ? 'FORNECIDA' : 'VAZIA') . "</pre>";
+            
+            $username = $post['username'] ?? '';
+            $password = $post['password'] ?? '';
+            
+            // Buscar utilizador
+            echo "<h2>1. BUSCAR UTILIZADOR</h2>";
+            $stmt = $db->prepare("SELECT * FROM rnb_portal_users WHERE username = ? AND activo = 1");
+            $stmt->bindValue(1, $username);
+            $result = $stmt->executeQuery();
+            $user = $result->fetchAssociative();
+            
+            if ($user) {
+                echo "<pre>✅ Utilizador encontrado: ID={$user['id']}, Anunciante={$user['anunciante_id']}</pre>";
+            } else {
+                echo "<pre>❌ Utilizador NÃO encontrado</pre>";
+                echo ob_get_clean();
+                return $response->withHeader('Content-Type', 'text/html');
+            }
+            
+            // Verificar password
+            echo "<h2>2. VERIFICAR PASSWORD</h2>";
+            if (password_verify($password, $user['password_hash'])) {
+                echo "<pre>✅ Password correcta</pre>";
+            } else {
+                echo "<pre>❌ Password incorrecta</pre>";
+                echo ob_get_clean();
+                return $response->withHeader('Content-Type', 'text/html');
+            }
+            
+            // Criar token
+            echo "<h2>3. CRIAR TOKEN</h2>";
+            $token = bin2hex(random_bytes(32));
+            $expires = date('Y-m-d H:i:s', time() + 28800);
+            echo "<pre>Token: " . substr($token, 0, 20) . "...</pre>";
+            echo "<pre>Expires: {$expires}</pre>";
+            
+            // Limpar tokens antigos
+            echo "<h2>4. LIMPAR TOKENS ANTIGOS</h2>";
+            $db->executeStatement("DELETE FROM rnb_portal_tokens WHERE user_id=?", [$user['id']]);
+            echo "<pre>✅ Tokens antigos apagados</pre>";
+            
+            // Inserir token
+            echo "<h2>5. INSERIR TOKEN NA BD</h2>";
+            try {
+                $db->insert('rnb_portal_tokens', [
+                    'token' => $token,
+                    'user_id' => $user['id'],
+                    'anunciante_id' => $user['anunciante_id'],
+                    'station_id' => $user['station_id'] ?? 1,
+                    'expires_at' => $expires,
+                ]);
+                echo "<pre>✅ Token inserido</pre>";
+            } catch (Exception $e) {
+                echo "<pre>❌ ERRO: " . $e->getMessage() . "</pre>";
+                echo ob_get_clean();
+                return $response->withHeader('Content-Type', 'text/html');
+            }
+            
+            // Definir cookie
+            echo "<h2>6. DEFINIR COOKIE</h2>";
+            $cookieSet = setcookie('RNB_PORTAL', $token, [
+                'expires' => time() + 28800,
+                'path' => '/',
+                'domain' => '',
+                'secure' => true,
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]);
+            
+            echo "<pre>setcookie() retornou: " . ($cookieSet ? '✅ TRUE' : '❌ FALSE') . "</pre>";
+            
+            // Verificar se cookie foi enviado
+            echo "<h2>7. VERIFICAR COOKIE NO BROWSER</h2>";
+            echo "<pre>Verifica F12 → Application → Cookies → rnb.radionewband.ao</pre>";
+            echo "<pre>Deve haver um cookie 'RNB_PORTAL' com valor: " . substr($token, 0, 20) . "...</pre>";
+            
+            echo "<h2>8. TESTAR ACESSO AO DASHBOARD</h2>";
+            echo "<a href='/public/portal/1' style='color:#0ff;font-size:18px'>Clica aqui para ir ao Dashboard</a>";
+            
+        } else {
+            echo "<form method='POST'>";
+            echo "Username: <input name='username' value='teste' style='width:200px'><br>";
+            echo "Password: <input name='password' type='password' value='Portal2026!' style='width:200px'><br>";
+            echo "<button type='submit'>TESTAR LOGIN</button>";
+            echo "</form>";
+        }
+        
+        $html = ob_get_clean();
+        $response->getBody()->write($html);
+        return $response->withHeader('Content-Type', 'text/html');
+    });
+
+    // Portal do Anunciante
+            
+            // RNB Media Sync
+            $app->get('/api/rnb/media/sync-azuracast',  \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':mediaSyncAzAction');
+            $app->get('/api/rnb/media/divergencias',    \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':mediaDivAction');
+            $app->get('/api/rnb/media/analise',         \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':mediaAnaliseAction');
+            $app->get('/api/rnb/media/pesquisar',       \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':mediaPesquisarAction');
+            
+            // WordPress Sync + Relatório Semanal
+            $app->get('/api/rnb/wp-sync',       \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':wpSyncAction');
+            $app->get('/api/rnb/relatorio-semanal', \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':relatorioSemanalAction');
+            $app->get('/api/rnb/relatorio-semanal/html', \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':relatorioSemanalHtmlAction');
+            
+            // RNB Intelligence — programação + audiência cruzada
+            $app->get('/api/rnb/intelligence',   \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':intelligenceAction');
+            $app->get('/api/rnb/programa-no-ar', \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':programaNoArAction');
+            
+            // RNB Sync — sincronização automática
+            $app->get('/api/rnb/sync/performance', \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':syncPerformanceAction');
+            $app->get('/api/rnb/sync/comercial',   \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':syncComercialAction');
+            $app->get('/api/rnb/prova-emissao',    \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':provaEmissaoAction');
+            $app->get('/api/rnb/top-musicas',      \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':topMusicasAction');
+            
+            // RNB Signal Layer — API unificada
+            $app->get('/api/rnb/now-playing', \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':nowPlayingAction');
+            $app->get('/api/rnb/status',      \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':statusAction');
+            $app->get('/api/rnb/history',     \Plugin\ProgramacaoPlugin\Controller\ApiController::class . ':historyAction');
+            
+            // RH — Autenticação (DEVE estar antes das rotas dinâmicas)
+            $app->get('/public/rh/login', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':loginAction');
+            $app->post('/public/rh/login', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':loginPostAction');
+            $app->get('/public/rh/logout', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':logoutAction');
+                        $app->get('/public/rh/{station_id}', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':indexAction');
             $app->get('/public/rh/{station_id}/funcionarios', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':funcionariosAction');
             $app->post('/public/rh/{station_id}/funcionarios/salvar', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':funcionarioSalvarAction');
             $app->get('/public/rh/{station_id}/folha-pagamento', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':folhaAction');
@@ -141,6 +291,20 @@ return function (\App\CallableEventDispatcher $dispatcher): void {
             $app->get('/public/rh/{station_id}/escalas', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':escalasAction');
             $app->post('/public/rh/{station_id}/escalas/salvar', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':escalaSalvarAction');
             $app->get('/public/rh/{station_id}/relatorios', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':relatoriosAction');
+            $app->get('/public/rh/{station_id}/performance', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':performanceAction');
+            $app->post('/public/rh/{station_id}/performance/calcular', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':performanceCalcularAction');
+            $app->get('/public/rh/{station_id}/contratos', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':contratosAction');
+            $app->post('/public/rh/{station_id}/contratos/salvar', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':contratoSalvarAction');
+            $app->get('/public/rh/{station_id}/alertas', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':alertasAction');
+            $app->post('/public/rh/{station_id}/alertas/gerar', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':alertasGerarAction');
+            
+            // RH — Skills e Documentos
+            $app->get('/public/rh/{station_id}/funcionario/{id}', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':perfilAction');
+            $app->post('/public/rh/{station_id}/skills/salvar', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':skillSalvarAction');
+            $app->post('/public/rh/{station_id}/skills/{id}/apagar', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':skillApagarAction');
+            $app->post('/public/rh/{station_id}/documentos/upload', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':documentoUploadAction');
+            $app->get('/public/rh/{station_id}/documentos/{id}/download', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':documentoDownloadAction');
+            $app->post('/public/rh/{station_id}/documentos/{id}/apagar', \Plugin\ProgramacaoPlugin\Controller\RhController::class . ':documentoApagarAction');
             // ────────────────────────────────────────────────────
             // ─── RNB NEWS ────────────────────────────────────────
             $app->get('/public/news/{station_id}', \Plugin\ProgramacaoPlugin\Controller\NewsController::class . ':indexAction');
@@ -153,8 +317,21 @@ return function (\App\CallableEventDispatcher $dispatcher): void {
             $app->get('/public/news/{station_id}/arquivo', \Plugin\ProgramacaoPlugin\Controller\NewsController::class . ':arquivoAction');
             // ─────────────────────────────────────────────────────
             // ─── DASHBOARD EXECUTIVO ─────────────────────────────
+                        // Dashboard APEX — novo design system
+            $app->get('/public/apex/{station_id}', \Plugin\ProgramacaoPlugin\Controller\DashboardApexController::class . ':indexAction');
             $app->get('/public/dashboard/{station_id}', \Plugin\ProgramacaoPlugin\Controller\DashboardController::class . ':indexAction');
             // ─────────────────────────────────────────────────────
+            // ─── PORTAL DO ANUNCIANTE ────────────────────────────────
+            $app->get('/public/portal/login', \Plugin\ProgramacaoPlugin\Controller\PortalController::class . ':loginAction');
+            $app->post('/public/portal/login', \Plugin\ProgramacaoPlugin\Controller\PortalController::class . ':loginPostAction');
+            $app->get('/public/portal/logout', \Plugin\ProgramacaoPlugin\Controller\PortalController::class . ':logoutAction');
+            $app->get('/public/portal/{station_id}', \Plugin\ProgramacaoPlugin\Controller\PortalController::class . ':dashboardAction');
+            $app->get('/public/portal/{station_id}/campanhas', \Plugin\ProgramacaoPlugin\Controller\PortalController::class . ':campanhasAction');
+            $app->get('/public/portal/{station_id}/prova-emissao/pdf', \Plugin\ProgramacaoPlugin\Controller\PortalController::class . ':provaEmissaoPdfAction');
+            $app->get('/public/portal/{station_id}/prova-emissao', \Plugin\ProgramacaoPlugin\Controller\PortalController::class . ':provaEmissaoAction');
+            $app->get('/public/portal/{station_id}/facturas', \Plugin\ProgramacaoPlugin\Controller\PortalController::class . ':facturasAction');
+            // ─────────────────────────────────────────────────────────────────
+            
             // ─── RNB COMERCIAL ───────────────────────────────────
             $app->get('/public/comercial/{station_id}', \Plugin\ProgramacaoPlugin\Controller\ComercialController::class . ':dashboardAction');
             $app->get('/public/comercial/{station_id}/anunciantes', \Plugin\ProgramacaoPlugin\Controller\ComercialController::class . ':anunciantesAction');

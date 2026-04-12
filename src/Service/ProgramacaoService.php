@@ -510,4 +510,111 @@ class ProgramacaoService
         }
         return $contagem;
     }
+
+    // ── INTEGRAÇÃO RNB OS ─────────────────────────────────────
+
+    /**
+     * Programa actual no ar — cruzado com Myriad e RH
+     */
+    public function getProgramaNoArEnriquecido(int $stationId): array
+    {
+        $agora   = date('H:i:s');
+        $diaSem  = ['Sunday'=>'dom','Monday'=>'seg','Tuesday'=>'ter',
+                    'Wednesday'=>'qua','Thursday'=>'qui',
+                    'Friday'=>'sex','Saturday'=>'sab'][date('l')];
+
+        // Programa agendado agora
+        $prog = $this->connection->fetchAssociative(
+            "SELECT p.*, l.nome AS locutor_nome, l.foto AS locutor_foto,
+                    l.funcionario_id,
+                    f.cargo AS locutor_cargo
+             FROM plugin_programacao_programas p
+             LEFT JOIN plugin_programacao_programa_locutor pl ON pl.programa_id=p.id AND pl.principal=1
+             LEFT JOIN plugin_programacao_locutores l ON l.id=pl.locutor_id
+             LEFT JOIN rnb_funcionarios f ON f.id=l.funcionario_id
+             WHERE p.station_id=?
+               AND p.ativo=1
+               AND ? BETWEEN p.horario_inicio AND p.horario_fim
+               AND JSON_CONTAINS(p.dias_semana, JSON_QUOTE(?))",
+            [$stationId, $agora, $diaSem]
+        );
+
+        if(!$prog) return [];
+
+        // Escala de hoje para este programa
+        $escala = $this->connection->fetchAssociative(
+            "SELECT e.*, f.nome AS func_nome
+             FROM rnb_rh_escalas e
+             JOIN rnb_funcionarios f ON f.id=e.funcionario_id
+             WHERE e.station_id=? AND e.data=? AND e.programa=?
+             ORDER BY e.created_at DESC LIMIT 1",
+            [$stationId, date('Y-m-d'), $prog['nome']]
+        );
+
+        // Performance mais recente do locutor neste programa
+        $perf = null;
+        if(!empty($prog['funcionario_id'])) {
+            $perf = $this->connection->fetchAssociative(
+                "SELECT AVG(performance_score) AS media,
+                        MAX(audiencia_media) AS max_aud
+                 FROM rnb_rh_performance
+                 WHERE funcionario_id=? AND station_id=?
+                   AND programa_nome=?",
+                [$prog['funcionario_id'], $stationId, $prog['nome']]
+            );
+        }
+
+        return [
+            'programa'      => $prog,
+            'escala'        => $escala,
+            'performance'   => $perf,
+            'no_ar'         => true,
+        ];
+    }
+
+    /**
+     * Grade semanal enriquecida com escalas do RH
+     */
+    public function getGradeSemanalCompleta(int $stationId): array
+    {
+        $dias = ['seg','ter','qua','qui','sex','sab','dom'];
+        $grade = [];
+
+        $programas = $this->connection->fetchAllAssociative(
+            "SELECT p.*,
+                    l.nome AS locutor_nome,
+                    l.foto AS locutor_foto,
+                    l.funcionario_id,
+                    f.cargo AS locutor_cargo
+             FROM plugin_programacao_programas p
+             LEFT JOIN plugin_programacao_programa_locutor pl ON pl.programa_id=p.id AND pl.principal=1
+             LEFT JOIN plugin_programacao_locutores l ON l.id=pl.locutor_id
+             LEFT JOIN rnb_funcionarios f ON f.id=l.funcionario_id
+             WHERE p.station_id=? AND p.ativo=1
+             ORDER BY p.horario_inicio",
+            [$stationId]
+        );
+
+        foreach($dias as $dia) {
+            $grade[$dia] = [];
+            foreach($programas as $prog) {
+                $diasProg = json_decode($prog['dias_semana'] ?? '[]', true);
+                if(!in_array($dia, $diasProg)) continue;
+                $grade[$dia][] = $prog;
+            }
+        }
+
+        return $grade;
+    }
+
+    /**
+     * Locutor por funcionario_id — link entre RH e programação pública
+     */
+    public function getLocutorPorFuncionario(int $funcionarioId): ?array
+    {
+        return $this->connection->fetchAssociative(
+            "SELECT * FROM plugin_programacao_locutores WHERE funcionario_id=? LIMIT 1",
+            [$funcionarioId]
+        ) ?: null;
+    }
 }

@@ -70,6 +70,13 @@ class ProgramacaoApiController
         ]);
     }
 
+    public function widgetDefaultAction(ServerRequest $request, Response $response, array $params): ResponseInterface
+    {
+        // Rota sem station_id - assume station 1
+        $params["station_id"] = 1;
+        return $this->widgetAction($request, $response, $params);
+    }
+
     public function widgetAction(ServerRequest $request, Response $response, array $params): ResponseInterface
     {
         $response = $this->addCorsHeaders($response);
